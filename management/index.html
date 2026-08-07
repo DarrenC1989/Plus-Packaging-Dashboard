@@ -30,49 +30,57 @@
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
   /* ── MAIN ── */
-  main{position:relative;z-index:1;padding:16px 20px;max-width:1200px;margin:0 auto}
+  html,body{height:100%;overflow:hidden}
+  #dashScreen{display:none;height:100%;flex-direction:column}
+  #dashScreen.active{display:flex}
+  main{position:relative;z-index:1;padding:10px 16px;flex:1;overflow:auto;display:flex;flex-direction:column;gap:0}
 
   /* ── DATE + STATUS ── */
-  .toprow{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
-  .date-str{font-size:12px;color:var(--mu)}
+  .toprow{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .date-str{font-size:11px;color:var(--mu)}
   .status-row{font-size:11px;color:var(--mu);display:flex;align-items:center;gap:4px}
 
   /* ── HERO ROW ── */
-  .hero-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
-  .hero-card{border-radius:14px;padding:16px 20px;border:1px solid transparent;position:relative;overflow:hidden;opacity:0;transform:translateY(16px);transition:opacity .5s ease,transform .5s ease}
+  .hero-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px}
+  .hero-card{border-radius:12px;padding:14px 18px;border:1px solid transparent;position:relative;overflow:hidden;opacity:0;transform:translateY(16px);transition:opacity .5s ease,transform .5s ease;flex:1}
   .hero-card.vis{opacity:1;transform:translateY(0)}
   .hero-card.red{background:linear-gradient(135deg,#2a0f0f,#3d1515);border-color:rgba(248,113,113,.25)}
   .hero-card.green{background:linear-gradient(135deg,#0a2a1a,#0f3d25);border-color:rgba(52,211,153,.25)}
   .hero-card.neutral{background:linear-gradient(135deg,#131f3a,#1a2a4a);border-color:var(--border)}
-  .hero-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;font-family:"Courier New",monospace;color:var(--mu);margin-bottom:4px}
-  .hero-val{font-size:28px;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--or)}
+  .hero-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;font-family:"Courier New",monospace;color:var(--mu);margin-bottom:2px}
+  .hero-val{font-size:clamp(20px,2.5vw,34px);font-weight:800;letter-spacing:-1px;line-height:1;color:var(--or)}
   .hero-card.green .hero-val{color:var(--gr)}
   .hero-card.red .hero-val{color:var(--re)}
   .hero-tgt{font-size:10px;color:var(--mu);margin-top:2px}
-  .hero-pct-row{display:flex;align-items:center;gap:8px;margin-top:6px}
-  .hero-pct{font-size:16px;font-weight:800;color:var(--re)}
+  .hero-pct-row{display:flex;align-items:center;gap:8px;margin-top:4px}
+  .hero-pct{font-size:clamp(13px,1.6vw,20px);font-weight:800;color:var(--re)}
   .hero-card.green .hero-pct{color:var(--gr)}
   .hero-badge{font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(248,113,113,.15);color:var(--re);border:1px solid rgba(248,113,113,.3);letter-spacing:.5px}
   .hero-card.green .hero-badge{background:rgba(52,211,153,.15);color:var(--gr);border-color:rgba(52,211,153,.3)}
-  .hero-bar-track{height:3px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin-top:6px}
+  .hero-bar-track{height:3px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin-top:5px}
   .hero-bar-fill{height:100%;border-radius:99px;width:0%;transition:width 1.2s cubic-bezier(.4,0,.2,1)}
   .hero-card.green .hero-bar-fill{background:linear-gradient(90deg,#1a8a5a,var(--gr))}
   .hero-card.red   .hero-bar-fill{background:linear-gradient(90deg,#8a1a1a,var(--re))}
-  .hero-var{font-size:10px;color:var(--mu);margin-top:4px}
+  .hero-var{font-size:10px;color:var(--mu);margin-top:3px}
 
   /* ── GRID ── */
-  .grid{display:grid;gap:10px;margin-bottom:12px}
+  .grid{display:grid;gap:8px;margin-bottom:8px}
   .grid-4{grid-template-columns:repeat(4,1fr)}
   .grid-5{grid-template-columns:repeat(5,1fr)}
   .grid-3{grid-template-columns:repeat(3,1fr)}
 
   /* ── METRIC CARD ── */
-  .mcard{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;opacity:0;transform:translateY(12px);transition:opacity .4s ease,transform .4s ease}
+  .mcard{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;opacity:0;transform:translateY(10px);transition:opacity .4s ease,transform .4s ease;display:flex;flex-direction:column;justify-content:center}
   .mcard.vis{opacity:1;transform:translateY(0)}
-  .mcard-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.8px;font-family:"Courier New",monospace;color:var(--mu);margin-bottom:3px}
-  .mcard-sub{font-size:10px;color:var(--mu);margin-bottom:6px}
-  .mcard-val{font-size:24px;font-weight:800;letter-spacing:-1px;line-height:1}
-  .mcard-detail{font-size:10px;color:var(--mu);margin-top:3px}
+  .mcard-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.8px;font-family:"Courier New",monospace;color:var(--mu);margin-bottom:2px}
+  .mcard-sub{font-size:9px;color:var(--mu);margin-bottom:4px}
+  .mcard-val{font-size:clamp(18px,2vw,28px);font-weight:800;letter-spacing:-1px;line-height:1}
+  .mcard-detail{font-size:10px;color:var(--mu);margin-top:2px}
+
+  /* section label */
+  .slbl{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+  .slbl span{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:2px;font-family:"Courier New",monospace;color:var(--mu);white-space:nowrap}
+  .slbll{flex:1;height:1px;background:var(--border)}
 
   /* card accent colours */
   .c-or{border-color:rgba(244,124,32,.25);background:linear-gradient(135deg,#1f1208,#2a1a0a)}
@@ -82,35 +90,28 @@
   .c-am{border-color:rgba(251,191,36,.25);background:linear-gradient(135deg,#1c1506,#261d08)}
   .c-re{border-color:rgba(248,113,113,.25);background:linear-gradient(135deg,#1f0a0a,#2a1010)}
 
-  /* section label */
-  .slbl{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-  .slbl span{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;font-family:"Courier New",monospace;color:var(--mu);white-space:nowrap}
-  .slbll{flex:1;height:1px;background:var(--border)}
-
   /* login */
   #loginScreen{display:flex;position:fixed;inset:0;background:var(--nb);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:16px}
   #loginScreen h2{font-size:20px;font-weight:800;color:var(--ow)}
   #loginScreen p{font-size:13px;color:var(--mu);text-align:center;max-width:300px}
   #loginScreen button{background:var(--or);color:#fff;border:none;border-radius:10px;padding:12px 32px;font-size:14px;font-weight:700;cursor:pointer}
-  #dashScreen{display:none}
+  #dashScreen{display:none;height:100vh;flex-direction:column}
+  #dashScreen.show{display:flex}
 
   /* error banner */
-  .errb{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--re);display:none}
+  .errb{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:11px;color:var(--re);display:none}
 
-  /* responsive */
+  /* responsive — mobile scrolls, desktop fits to screen */
   @media(max-width:900px){
-    .hero-row{grid-template-columns:1fr 1fr}
+    html,body{overflow:auto}
+    #dashScreen{height:auto}
+    main{overflow:visible;padding:10px 14px}
     .grid-4{grid-template-columns:1fr 1fr}
     .grid-5{grid-template-columns:1fr 1fr}
     .grid-3{grid-template-columns:1fr 1fr}
-    .hero-val{font-size:22px}
   }
   @media(max-width:600px){
-    main{padding:12px 14px}
-    .hero-row{grid-template-columns:1fr 1fr}
     .grid-4,.grid-5,.grid-3{grid-template-columns:1fr 1fr}
-    .hero-val{font-size:18px}
-    .mcard-val{font-size:20px}
   }
 </style>
 </head>
@@ -325,7 +326,7 @@ function signOut(){
   localStorage.removeItem("tok");localStorage.removeItem("rt");localStorage.removeItem("exp");
   localStorage.removeItem("dynTok");localStorage.removeItem("dynExp");sessionStorage.clear();
   token=null;dynToken=null;clearInterval(ticker);
-  document.getElementById("dashScreen").style.display="none";
+  document.getElementById("dashScreen").classList.remove("show");
   document.getElementById("loginScreen").style.display="flex";
 }
 
@@ -570,7 +571,7 @@ async function fetchData(){
   const tok=localStorage.getItem("tok");
   if((tok&&Date.now()<exp-60000)||rt){
     document.getElementById("loginScreen").style.display="none";
-    document.getElementById("dashScreen").style.display="block";
+    document.getElementById("dashScreen").classList.add("show");
     fetchData();
     setInterval(updateClock,1000);
   }
