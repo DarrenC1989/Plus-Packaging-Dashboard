@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Management Dashboard — Plus Packaging</title>
+<link rel="icon" href="/favicon.png">
+<style>
+  :root{
+    --nb:#0d1b38;--nc:#111f42;--or:#f47c20;--gr:#34d399;--cy:#38bdf8;
+    --re:#f87171;--am:#fbbf24;--pu:#a78bfa;--mu:rgba(255,255,255,.45);
+    --ow:rgba(255,255,255,.88);--card:#13213f;--border:rgba(255,255,255,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:"Segoe UI",system-ui,sans-serif;background:var(--nb);color:var(--ow)}
+  body::before{content:"";position:fixed;inset:0;background-image:radial-gradient(rgba(255,255,255,.03) 1px,transparent 1px);background-size:28px 28px;pointer-events:none;z-index:0}
+
+  /* ── NAV ── */
+  .nav{position:sticky;top:0;z-index:100;background:rgba(13,27,56,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;gap:12px;height:48px}
+  .nav-logo{height:28px}
+  .nav-title{font-size:13px;font-weight:700;letter-spacing:.5px;color:var(--ow);flex:1}
+  .nav-meta{font-size:11px;color:var(--mu);text-align:right;line-height:1.4}
+  .nav-btn{background:var(--or);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.3px;white-space:nowrap}
+  .nav-btn:hover{opacity:.88}
+  .nav-link{font-size:12px;color:var(--mu);text-decoration:none;padding:4px 8px;border-radius:6px;border:1px solid var(--border)}
+  .nav-link:hover{color:var(--ow);border-color:rgba(255,255,255,.2)}
+  .sdot{width:7px;height:7px;border-radius:50%;background:var(--gr);display:inline-block;margin-right:5px;animation:pulse 2s infinite}
+  .sdot.ld{background:var(--am)}
+  .sdot.er{background:var(--re);animation:none}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  /* ── MAIN ── */
+  main{position:relative;z-index:1;padding:16px 20px;max-width:1200px;margin:0 auto}
+
+  /* ── DATE + STATUS ── */
+  .toprow{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .date-str{font-size:12px;color:var(--mu)}
+  .status-row{font-size:11px;color:var(--mu);display:flex;align-items:center;gap:4px}
+
+  /* ── HERO ROW ── */
+  .hero-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+  .hero-card{border-radius:14px;padding:16px 20px;border:1px solid transparent;position:relative;overflow:hidden;opacity:0;transform:translateY(16px);transition:opacity .5s ease,transform .5s ease}
+  .hero-card.vis{opacity:1;transform:translateY(0)}
+  .hero-card.red{background:linear-gradient(135deg,#2a0f0f,#3d1515);border-color:rgba(248,113,113,.25)}
+  .hero-card.green{background:linear-gradient(135deg,#0a2a1a,#0f3d25);border-color:rgba(52,211,153,.25)}
+  .hero-card.neutral{background:linear-gradient(135deg,#131f3a,#1a2a4a);border-color:var(--border)}
+  .hero-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;font-family:"Courier New",monospace;color:var(--mu);margin-bottom:4px}
+  .hero-val{font-size:28px;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--or)}
+  .hero-card.green .hero-val{color:var(--gr)}
+  .hero-card.red .hero-val{color:var(--re)}
+  .hero-tgt{font-size:10px;color:var(--mu);margin-top:2px}
+  .hero-pct-row{display:flex;align-items:center;gap:8px;margin-top:6px}
+  .hero-pct{font-size:16px;font-weight:800;color:var(--re)}
+  .hero-card.green .hero-pct{color:var(--gr)}
+  .hero-badge{font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(248,113,113,.15);color:var(--re);border:1px solid rgba(248,113,113,.3);letter-spacing:.5px}
+  .hero-card.green .hero-badge{background:rgba(52,211,153,.15);color:var(--gr);border-color:rgba(52,211,153,.3)}
+  .hero-bar-track{height:3px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin-top:6px}
+  .hero-bar-fill{height:100%;border-radius:99px;width:0%;transition:width 1.2s cubic-bezier(.4,0,.2,1)}
+  .hero-card.green .hero-bar-fill{background:linear-gradient(90deg,#1a8a5a,var(--gr))}
+  .hero-card.red   .hero-bar-fill{background:linear-gradient(90deg,#8a1a1a,var(--re))}
+  .hero-var{font-size:10px;color:var(--mu);margin-top:4px}
+
+  /* ── GRID ── */
+  .grid{display:grid;gap:10px;margin-bottom:12px}
+  .grid-4{grid-template-columns:repeat(4,1fr)}
+  .grid-5{grid-template-columns:repeat(5,1fr)}
+  .grid-3{grid-template-columns:repeat(3,1fr)}
+
+  /* ── METRIC CARD ── */
+  .mcard{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;opacity:0;transform:translateY(12px);transition:opacity .4s ease,transform .4s ease}
+  .mcard.vis{opacity:1;transform:translateY(0)}
+  .mcard-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.8px;font-family:"Courier New",monospace;color:var(--mu);margin-bottom:3px}
+  .mcard-sub{font-size:10px;color:var(--mu);margin-bottom:6px}
+  .mcard-val{font-size:24px;font-weight:800;letter-spacing:-1px;line-height:1}
+  .mcard-detail{font-size:10px;color:var(--mu);margin-top:3px}
+
+  /* card accent colours */
+  .c-or{border-color:rgba(244,124,32,.25);background:linear-gradient(135deg,#1f1208,#2a1a0a)}
+  .c-gr{border-color:rgba(52,211,153,.25);background:linear-gradient(135deg,#0a1f14,#0d2a1c)}
+  .c-cy{border-color:rgba(56,189,248,.25);background:linear-gradient(135deg,#081828,#0d2235)}
+  .c-pu{border-color:rgba(167,139,250,.25);background:linear-gradient(135deg,#140d28,#1c1238)}
+  .c-am{border-color:rgba(251,191,36,.25);background:linear-gradient(135deg,#1c1506,#261d08)}
+  .c-re{border-color:rgba(248,113,113,.25);background:linear-gradient(135deg,#1f0a0a,#2a1010)}
+
+  /* section label */
+  .slbl{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .slbl span{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;font-family:"Courier New",monospace;color:var(--mu);white-space:nowrap}
+  .slbll{flex:1;height:1px;background:var(--border)}
+
+  /* login */
+  #loginScreen{display:flex;position:fixed;inset:0;background:var(--nb);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+  #loginScreen h2{font-size:20px;font-weight:800;color:var(--ow)}
+  #loginScreen p{font-size:13px;color:var(--mu);text-align:center;max-width:300px}
+  #loginScreen button{background:var(--or);color:#fff;border:none;border-radius:10px;padding:12px 32px;font-size:14px;font-weight:700;cursor:pointer}
+  #dashScreen{display:none}
+
+  /* error banner */
+  .errb{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--re);display:none}
+
+  /* responsive */
+  @media(max-width:900px){
+    .hero-row{grid-template-columns:1fr 1fr}
+    .grid-4{grid-template-columns:1fr 1fr}
+    .grid-5{grid-template-columns:1fr 1fr}
+    .grid-3{grid-template-columns:1fr 1fr}
+    .hero-val{font-size:22px}
+  }
+  @media(max-width:600px){
+    main{padding:12px 14px}
+    .hero-row{grid-template-columns:1fr 1fr}
+    .grid-4,.grid-5,.grid-3{grid-template-columns:1fr 1fr}
+    .hero-val{font-size:18px}
+    .mcard-val{font-size:20px}
+  }
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="loginScreen">
+  <img src="/favicon.png" style="height:48px">
+  <h2>Management Dashboard</h2>
+  <p>Sign in with your Plus Packaging account to view live data.</p>
+  <button onclick="startLogin()">Sign in with Microsoft</button>
+</div>
+
+<!-- Dashboard -->
+<div id="dashScreen">
+
+  <nav class="nav">
+    <img src="/favicon.png" class="nav-logo">
+    <div class="nav-title">Plus Packaging &mdash; Management</div>
+    <div class="nav-meta">
+      Updated <span id="updTime">—</span><br>
+      <span class="sdot" id="sdot"></span><span id="stxt">Loading…</span>
+    </div>
+    <a href="/" class="nav-link">&#8592; Dashboards</a>
+    <button class="nav-btn" id="btnr" onclick="fetchData()">&#x27F3; Refresh</button>
+    <button class="nav-btn" style="background:rgba(255,255,255,.1);" onclick="signOut()">Sign out</button>
+  </nav>
+
+  <main>
+    <div class="toprow">
+      <div class="date-str" id="dateStr"></div>
+      <div class="status-row"><span class="sdot" id="sdot2"></span><span id="stxt2">Live data</span></div>
+    </div>
+
+    <div class="errb" id="errb">⚠ <span id="errmsg"></span></div>
+
+    <!-- MTD Hero -->
+    <div class="slbl"><span>MTD Performance</span><div class="slbll"></div></div>
+    <div class="hero-row" style="margin-bottom:12px;">
+      <div class="hero-card neutral" id="hcSales">
+        <div class="hero-label">Sales MTD</div>
+        <div class="hero-val" id="hSalesVal">—</div>
+        <div class="hero-tgt">Target: <span id="hSalesTgt">—</span></div>
+        <div class="hero-pct-row">
+          <div class="hero-pct" id="hSalesPct">—</div>
+          <div class="hero-badge" id="hSalesBadge">—</div>
+        </div>
+        <div class="hero-bar-track"><div class="hero-bar-fill" id="hSalesBar"></div></div>
+        <div class="hero-var" id="hSalesVar"></div>
+      </div>
+      <div class="hero-card neutral" id="hcPM">
+        <div class="hero-label">Product Margin MTD</div>
+        <div class="hero-val" id="hPMVal">—</div>
+        <div class="hero-tgt">Target: <span id="hPMTgt">—</span></div>
+        <div class="hero-pct-row">
+          <div class="hero-pct" id="hPMPct">—</div>
+          <div class="hero-badge" id="hPMBadge">—</div>
+        </div>
+        <div class="hero-bar-track"><div class="hero-bar-fill" id="hPMBar"></div></div>
+        <div class="hero-var" id="hPMVar"></div>
+      </div>
+    </div>
+
+    <!-- Row 1: Today's numbers -->
+    <div class="slbl"><span>Today</span><div class="slbll"></div></div>
+    <div class="grid grid-4" id="todayGrid" style="margin-bottom:12px;">
+      <div class="mcard c-or" id="mc0">
+        <div class="mcard-label">PM %</div>
+        <div class="mcard-sub">Product Margin MTD ÷ Sales MTD</div>
+        <div class="mcard-val" id="mPMPct" style="color:var(--or);">—</div>
+      </div>
+      <div class="mcard c-cy" id="mc1">
+        <div class="mcard-label">Orders Today</div>
+        <div class="mcard-sub">Sales orders in</div>
+        <div class="mcard-val" id="mOrders" style="color:var(--cy);">—</div>
+      </div>
+      <div class="mcard c-gr" id="mc2">
+        <div class="mcard-label">Shipped Today</div>
+        <div class="mcard-sub">Value shipped</div>
+        <div class="mcard-val" id="mShipped" style="color:var(--gr);">—</div>
+      </div>
+      <div class="mcard c-am" id="mc3">
+        <div class="mcard-label">New Customers</div>
+        <div class="mcard-sub">This month</div>
+        <div class="mcard-val" id="mNewCust" style="color:var(--am);">—</div>
+      </div>
+    </div>
+
+    <!-- Row 2: CRM Activity -->
+    <div class="slbl"><span>CRM Activity — This Month</span><div class="slbll"></div></div>
+    <div class="grid grid-4" id="crmGrid" style="margin-bottom:12px;">
+      <div class="mcard c-cy" id="mc4">
+        <div class="mcard-label">MSI Calls</div>
+        <div class="mcard-sub">Meaningful outbound calls</div>
+        <div class="mcard-val" id="mCalls" style="color:var(--cy);">—</div>
+      </div>
+      <div class="mcard c-pu" id="mc5">
+        <div class="mcard-label">Site Visits</div>
+        <div class="mcard-sub">Spoke to buyer</div>
+        <div class="mcard-val" id="mVisits" style="color:var(--pu);">—</div>
+      </div>
+      <div class="mcard c-or" id="mc6">
+        <div class="mcard-label">Deals Opened</div>
+        <div class="mcard-sub">New opportunities</div>
+        <div class="mcard-val" id="mDeals" style="color:var(--or);">—</div>
+      </div>
+      <div class="mcard c-gr" id="mc7">
+        <div class="mcard-label">Win Rate</div>
+        <div class="mcard-sub">Won ÷ (Won + Lost)</div>
+        <div class="mcard-val" id="mWinRate" style="color:var(--gr);">—</div>
+      </div>
+    </div>
+
+    <!-- Row 3: Catalogue + NPS + Inventory -->
+    <div class="slbl"><span>Operations & Experience</span><div class="slbll"></div></div>
+    <div class="grid grid-5" id="opsGrid">
+      <div class="mcard c-am" id="mc8">
+        <div class="mcard-label">NPS Score</div>
+        <div class="mcard-sub">Last 30 days</div>
+        <div class="mcard-val" id="mNPS" style="color:var(--am);">—</div>
+      </div>
+      <div class="mcard c-gr" id="mc9">
+        <div class="mcard-label">Catalogue In Stock</div>
+        <div class="mcard-sub">% available</div>
+        <div class="mcard-val" id="mCatPct" style="color:var(--gr);">—</div>
+      </div>
+      <div class="mcard" id="mc10" style="border-color:rgba(56,189,248,.2);background:linear-gradient(135deg,#081828,#0d2235)">
+        <div class="mcard-label">Catalogue Items</div>
+        <div class="mcard-sub">Total in catalogue</div>
+        <div class="mcard-val" id="mCatCount" style="color:var(--cy);">—</div>
+      </div>
+      <div class="mcard c-pu" id="mc11">
+        <div class="mcard-label">Inventory Value</div>
+        <div class="mcard-sub">Finance tab D3</div>
+        <div class="mcard-val" id="mInvVal" style="color:var(--pu);">—</div>
+      </div>
+      <div class="mcard c-re" id="mc12" style="display:none">
+        <!-- spare slot -->
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+const CFG={
+  clientId:"984139d6-9a6c-4da1-894d-34148ff1d570",
+  tenantId:"5f50e638-38b0-44d5-8e87-9a4d7d01717d",
+  driveId:"b!MfZQMhbAJkWmoO_5biyf8WZTRBg9IitDqU0d5RC3C8h6y-Xm-ktGRbX7WUTNNtgX",
+  outputFolderId:"017WW6KAG3P4TJAUFSJJE3Z7YYHROSB4LE",
+  crmDataItemId:"017WW6KAARD5NC52XSNVH3MPPI4DC5FT3H",
+  graphBase:"https://graph.microsoft.com/v1.0",
+  dynamicsUrl:"https://pluspackaging.crm11.dynamics.com/api/data/v9.2",
+  scopes:["Files.Read.All","Sites.Read.All","User.Read"],
+  dynamicsScopes:["https://pluspackaging.crm11.dynamics.com/user_impersonation"],
+};
+const NAV_WORKER_URL="https://nav-data.darren-clayson.workers.dev";
+let token=null,dynToken=null,autoOn=true,intMins=5,cdSecs=300,ticker=null,busy=false,firstLoad=true;
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+function b64url(buf){return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"");}
+async function sha256(str){return crypto.subtle.digest("SHA-256",new TextEncoder().encode(str));}
+function rnd(n){const a=new Uint8Array(n);crypto.getRandomValues(a);return b64url(a);}
+
+async function startLogin(){
+  const ver=rnd(43),ch=b64url(await sha256(ver)),st=rnd(16);
+  sessionStorage.setItem("pkce_ver",ver);sessionStorage.setItem("pkce_st",st);
+  const scope=[...CFG.scopes,"offline_access"].join(" ");
+  const p=new URLSearchParams({client_id:CFG.clientId,response_type:"code",redirect_uri:location.origin+"/management/",scope,code_challenge:ch,code_challenge_method:"S256",state:st,response_mode:"query"});
+  location.href=`https://login.microsoftonline.com/${CFG.tenantId}/oauth2/v2.0/authorize?`+p;
+}
+
+async function tokenRequest(params){
+  const r=await fetch(`https://login.microsoftonline.com/${CFG.tenantId}/oauth2/v2.0/token`,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams(params)});
+  return r.json();
+}
+
+async function ensureToken(){
+  if(token)return token;
+  const exp=+localStorage.getItem("exp")||0;
+  const t=localStorage.getItem("tok");
+  if(t&&Date.now()<exp-60000){token=t;return token;}
+  const rt=localStorage.getItem("rt");
+  if(rt){
+    const j=await tokenRequest({client_id:CFG.clientId,grant_type:"refresh_token",refresh_token:rt,scope:[...CFG.scopes,"offline_access"].join(" ")});
+    if(j.access_token){
+      token=j.access_token;
+      localStorage.setItem("tok",token);localStorage.setItem("exp",Date.now()+j.expires_in*1000);
+      if(j.refresh_token)localStorage.setItem("rt",j.refresh_token);
+      return token;
+    }
+  }
+  startLogin();throw new Error("Login required");
+}
+
+async function ensureDynToken(){
+  if(dynToken)return dynToken;
+  const exp=+localStorage.getItem("dynExp")||0;
+  if(Date.now()<exp-60000){dynToken=localStorage.getItem("dynTok")||null;if(dynToken)return dynToken;}
+  const rt=localStorage.getItem("rt");
+  if(!rt)throw new Error("No refresh token");
+  const j=await tokenRequest({client_id:CFG.clientId,grant_type:"refresh_token",refresh_token:rt,scope:[...CFG.dynamicsScopes,"offline_access"].join(" ")});
+  if(j.access_token){
+    dynToken=j.access_token;
+    localStorage.setItem("dynTok",dynToken);localStorage.setItem("dynExp",Date.now()+j.expires_in*1000);
+    return dynToken;
+  }
+  throw new Error("CRM token failed");
+}
+
+function signOut(){
+  localStorage.removeItem("tok");localStorage.removeItem("rt");localStorage.removeItem("exp");
+  localStorage.removeItem("dynTok");localStorage.removeItem("dynExp");sessionStorage.clear();
+  token=null;dynToken=null;clearInterval(ticker);
+  document.getElementById("dashScreen").style.display="none";
+  document.getElementById("loginScreen").style.display="flex";
+}
+
+// ── GRAPH ────────────────────────────────────────────────────────────────────
+async function graphJSON(path){
+  const tok=await ensureToken();
+  const r=await fetch(CFG.graphBase+path,{headers:{Authorization:"Bearer "+tok}});
+  if(!r.ok)throw new Error("Graph "+r.status);
+  return r.json();
+}
+
+// ── DYNAMICS ─────────────────────────────────────────────────────────────────
+async function dynFetch(path){
+  const tok=await ensureDynToken();
+  const r=await fetch(CFG.dynamicsUrl+path,{headers:{
+    "Authorization":"Bearer "+tok,"Accept":"application/json",
+    "OData-MaxVersion":"4.0","OData-Version":"4.0",
+    "Prefer":"odata.include-annotations=\"*\""
+  }});
+  if(!r.ok){const t=await r.text();throw new Error("CRM "+r.status+": "+t.slice(0,200));}
+  return r.json();
+}
+
+async function crmAll(path){
+  let records=[],url=CFG.dynamicsUrl+path;
+  while(url){
+    const tok=await ensureDynToken();
+    const r=await fetch(url,{headers:{"Authorization":"Bearer "+tok,"Accept":"application/json","OData-MaxVersion":"4.0","OData-Version":"4.0","Prefer":"odata.include-annotations=\"*\""}});
+    if(!r.ok)throw new Error("CRM "+r.status);
+    const j=await r.json();
+    records=records.concat(j.value||[]);
+    url=j["@odata.nextLink"]||null;
+  }
+  return records;
+}
+
+// ── DATE HELPERS ─────────────────────────────────────────────────────────────
+function monthStart(){const d=new Date();return new Date(d.getFullYear(),d.getMonth(),1).toISOString();}
+function nowISO(){return new Date().toISOString();}
+
+// ── DATA DUMP ────────────────────────────────────────────────────────────────
+async function readDataDump(){
+  try{
+    const folder=await graphJSON("/drives/"+CFG.driveId+"/items/"+CFG.outputFolderId+"/children");
+    const file=folder.value.find(f=>f.name==="Data Dump.xlsx");
+    if(!file)throw new Error("Data Dump.xlsx not found");
+    const dl=await fetch(file["@microsoft.graph.downloadUrl"]);
+    const ab=await dl.arrayBuffer();
+    const wb=XLSX.read(ab,{type:"array"});
+
+    // SALES sheet
+    const ws=wb.Sheets["SALES"]||wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+    const salesYesterday=rows[73]?.[2]!=null?Math.abs(Number(rows[73][2])):null;
+    const pmYesterday=rows[77]?.[2]!=null?Math.abs(Number(rows[77][2])):null;
+    const salesTarget=rows[21]?.[2]!=null?Math.abs(Number(rows[21][2])):null;
+    const pmTarget=rows[22]?.[2]!=null?Math.abs(Number(rows[22][2])):null;
+    const newCustomers=rows[63]?.[2]!=null?Number(rows[63][2]):null;
+
+    // OPS sheet — catalogue
+    let catPct=null,catCount=null,catTotal=null;
+    const ops=wb.Sheets["OPS"];
+    if(ops){
+      const opsRows=XLSX.utils.sheet_to_json(ops,{header:1,defval:null});
+      const rawPct=opsRows[10]?.[2];
+      if(rawPct!=null){const n=Number(rawPct);catPct=isNaN(n)?null:(n<=1?n*100:n);}
+      catCount=opsRows[8]?.[2]!=null?Number(opsRows[8][2]):null;
+      catTotal=opsRows[9]?.[2]!=null?Number(opsRows[9][2]):null;
+    }
+
+    // FINANCE sheet — D3 = inventory value
+    let inventoryValue=null;
+    const fin=wb.Sheets["Finance"]||wb.Sheets["FINANCE"]||wb.Sheets["finance"];
+    if(fin){
+      const finRows=XLSX.utils.sheet_to_json(fin,{header:1,defval:null});
+      inventoryValue=finRows[2]?.[3]!=null?Number(finRows[2][3]):null;
+    }
+
+    return{salesYesterday,pmYesterday,salesTarget,pmTarget,newCustomers,catPct,catCount,catTotal,inventoryValue};
+  }catch(e){console.warn("DataDump:",e.message);return{};}
+}
+
+// ── NAV ───────────────────────────────────────────────────────────────────────
+async function readNAV(dd){
+  try{
+    const r=await fetch(NAV_WORKER_URL+"/nav/all",{signal:AbortSignal.timeout(30000)});
+    if(!r.ok)throw new Error("NAV "+r.status);
+    const j=await r.json();
+    return{
+      sales:(dd.salesYesterday??0)+(j.salesToday??0),
+      pm:(dd.pmYesterday??0)+(j.marginToday??0),
+      ordersToday:j.ordersToday??null,
+      shippedToday:j.shippedToday??null,
+    };
+  }catch(e){console.warn("NAV:",e.message);return{};}
+}
+
+// ── NPS ───────────────────────────────────────────────────────────────────────
+async function readNPS(){
+  try{
+    const r=await fetch("../nps.json?t="+Date.now(),{signal:AbortSignal.timeout(5000)});
+    if(!r.ok)throw new Error("nps.json "+r.status);
+    const j=await r.json();
+    return{nps:j.NPS??j.score??j.nps??null};
+  }catch(e){return{nps:null};}
+}
+
+// ── CRM ───────────────────────────────────────────────────────────────────────
+async function readCRM(){
+  try{
+    const from=monthStart(),to=nowISO();
+
+    const[calls,visits,dealsOpen,dealsWon,dealsLost]=await Promise.all([
+      // MSI calls this month
+      crmAll(`/phonecalls?$select=subject,actualend,_ownerid_value,new_meaningfulsalesinteraction&$filter=directioncode eq true and statecode eq 1 and new_meaningfulsalesinteraction eq true and actualend ge ${from} and actualend le ${to}&$orderby=actualend desc`),
+      // Site visits this month
+      crmAll(`/new_sitevisitreports?$select=subject,actualend,createdon,_ownerid_value,_regardingobjectid_value,new_leadapp&$filter=new_leadapp eq true and createdon ge ${from}&$orderby=createdon desc`),
+      // Deals opened this month
+      crmAll(`/opportunities?$select=name,estimatedvalue,createdon,new_stage,_ownerid_value&$filter=statecode eq 0 and createdon ge ${from} and createdon le ${to}`),
+      // Won this month
+      crmAll(`/opportunities?$select=opportunityid,actualclosedate&$filter=statecode eq 1 and actualclosedate ge ${from} and actualclosedate le ${to}`),
+      // Lost this month
+      crmAll(`/opportunities?$select=opportunityid,actualclosedate&$filter=statecode eq 2 and actualclosedate ge ${from} and actualclosedate le ${to}`),
+    ]);
+
+    const winRate=dealsWon.length+dealsLost.length>0
+      ?Math.round(dealsWon.length/(dealsWon.length+dealsLost.length)*100)
+      :null;
+
+    return{msiCalls:calls.length,siteVisits:visits.length,dealsOpened:dealsOpen.length,winRate};
+  }catch(e){console.warn("CRM:",e.message);return{msiCalls:null,siteVisits:null,dealsOpened:null,winRate:null};}
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+const GBP=v=>v==null?"—":"£"+Number(v).toLocaleString("en-GB",{minimumFractionDigits:0,maximumFractionDigits:0});
+const GBPd=v=>v==null?"—":"£"+Number(v).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2});
+const PCT=v=>v==null?"—":Number(v).toFixed(1)+"%";
+const INT=v=>v==null?"—":Math.round(Number(v)).toLocaleString("en-GB");
+
+function renderHero(cardId,valId,tgtId,pctId,badgeId,barId,varId,value,target){
+  const card=document.getElementById(cardId);
+  const pct=value&&target?Math.round((value/target)*1000)/10:null;
+  const onTarget=pct!=null&&pct>=100;
+  card.className="hero-card "+(pct==null?"neutral":onTarget?"green":"red")+" vis";
+  document.getElementById(valId).textContent=GBPd(value);
+  document.getElementById(tgtId).textContent=GBPd(target);
+  document.getElementById(pctId).textContent=pct!=null?pct.toFixed(1)+"%":"—";
+  document.getElementById(badgeId).textContent=pct==null?"—":pct>100?"Above Target ✓":pct>=100?"On Target ✓":"Below Target";
+  document.getElementById(varId).textContent=value&&target?(value>=target?"":"£"+Math.abs(value-target).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2})+" vs MTD Target"):"";
+  setTimeout(()=>{document.getElementById(barId).style.width=Math.min(100,pct??0)+"%";},400);
+}
+
+function setStatus(s){
+  ["sdot","sdot2"].forEach(id=>{const d=document.getElementById(id);if(d){d.className="sdot"+(s==="ld"?" ld":s==="er"?" er":"");}});
+  ["stxt","stxt2"].forEach(id=>{const t=document.getElementById(id);if(t)t.textContent=s==="ld"?"Fetching data…":s==="er"?"Connection error":"Live data";});
+}
+
+function updateClock(){
+  const now=new Date();
+  document.getElementById("updTime").textContent=now.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  document.getElementById("dateStr").textContent=now.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+}
+
+function restartCd(){clearInterval(ticker);cdSecs=intMins*60;ticker=setInterval(()=>{cdSecs--;if(cdSecs<=0&&autoOn){fetchData();}},1000);}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function render(d){
+  // Hero cards
+  renderHero("hcSales","hSalesVal","hSalesTgt","hSalesPct","hSalesBadge","hSalesBar","hSalesVar",d.sales,d.salesTarget);
+  renderHero("hcPM","hPMVal","hPMTgt","hPMPct","hPMBadge","hPMBar","hPMVar",d.pm,d.pmTarget);
+
+  // PM %
+  const pmPct=d.sales&&d.pm?Math.round(d.pm/d.sales*1000)/10:null;
+  document.getElementById("mPMPct").textContent=pmPct!=null?pmPct.toFixed(1)+"%":"—";
+
+  // Today
+  document.getElementById("mOrders").textContent=GBPd(d.ordersToday);
+  document.getElementById("mShipped").textContent=GBPd(d.shippedToday);
+  document.getElementById("mNewCust").textContent=INT(d.newCustomers);
+
+  // CRM
+  document.getElementById("mCalls").textContent=INT(d.msiCalls);
+  document.getElementById("mVisits").textContent=INT(d.siteVisits);
+  document.getElementById("mDeals").textContent=INT(d.dealsOpened);
+  document.getElementById("mWinRate").textContent=d.winRate!=null?d.winRate+"%":"—";
+
+  // Ops
+  document.getElementById("mNPS").textContent=d.nps!=null?d.nps:"—";
+  document.getElementById("mCatPct").textContent=PCT(d.catPct);
+  document.getElementById("mCatCount").textContent=d.catCount!=null?INT(d.catCount)+(d.catTotal?" / "+INT(d.catTotal):""):"—";
+  document.getElementById("mInvVal").textContent=GBP(d.inventoryValue);
+
+  // NPS colour
+  const npsEl=document.getElementById("mNPS");
+  if(d.nps!=null) npsEl.style.color=d.nps>=50?"var(--gr)":d.nps>=0?"var(--am)":"var(--re)";
+
+  // Animate cards
+  ["hcSales","hcPM"].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add("vis");},i*80));
+  ["mc0","mc1","mc2","mc3","mc4","mc5","mc6","mc7","mc8","mc9","mc10","mc11"].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add("vis");},i*50));
+}
+
+// ── FETCH ─────────────────────────────────────────────────────────────────────
+async function fetchData(){
+  if(busy)return;busy=true;
+  if(firstLoad){setStatus("ld");document.getElementById("btnr").disabled=true;document.getElementById("btnr").textContent="Loading…";}
+  updateClock();
+  try{
+    const[dd,nps,crm]=await Promise.all([readDataDump(),readNPS(),readCRM()]);
+    const nav=await readNAV(dd);
+    render({...dd,...nps,...crm,...nav});
+    setStatus("ok");document.getElementById("errb").style.display="none";
+  }catch(e){
+    setStatus("er");
+    document.getElementById("errb").style.display="block";
+    document.getElementById("errmsg").textContent="Could not load data: "+e.message+". Check your connection or refresh.";
+  }finally{
+    busy=false;document.getElementById("btnr").disabled=false;document.getElementById("btnr").textContent="⟳ Refresh";firstLoad=false;restartCd();
+  }
+}
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+(async()=>{
+  // Load SheetJS
+  await new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+
+  // Handle auth redirect
+  const params=new URLSearchParams(location.search);
+  if(params.has("code")){
+    const ver=sessionStorage.getItem("pkce_ver");
+    const j=await tokenRequest({client_id:CFG.clientId,grant_type:"authorization_code",code:params.get("code"),redirect_uri:location.origin+"/management/",code_verifier:ver,scope:[...CFG.scopes,"offline_access"].join(" ")});
+    if(j.access_token){
+      token=j.access_token;
+      localStorage.setItem("tok",token);localStorage.setItem("exp",Date.now()+j.expires_in*1000);
+      if(j.refresh_token)localStorage.setItem("rt",j.refresh_token);
+      history.replaceState({},"",location.pathname);
+    }
+  }
+
+  // Check if already signed in
+  const rt=localStorage.getItem("rt");
+  const exp=+localStorage.getItem("exp")||0;
+  const tok=localStorage.getItem("tok");
+  if((tok&&Date.now()<exp-60000)||rt){
+    document.getElementById("loginScreen").style.display="none";
+    document.getElementById("dashScreen").style.display="block";
+    fetchData();
+    setInterval(updateClock,1000);
+  }
+})();
+</script>
+</body>
+</html>
