@@ -138,6 +138,8 @@
     .card--sales:hover      { border-color: var(--amber); }
     .card--cs:hover         { border-color: var(--navy); }
     .card--warehouse:hover  { border-color: #34d399; }
+    .card--pipeline:hover   { border-color: #f47c20; }
+    .card--pipeline .card-top { background: #1f1208; }
     .card--management:hover { border-color: #a78bfa; }
     .card--management .card-top { background: #1a0d38; }
 
@@ -389,13 +391,39 @@
         </div>
       </a>
 
+      <a class="card card--pipeline" href="./pipeline/">
+        <div class="card-top">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          </div>
+          <div>
+            <div class="card-num">Dashboard 04</div>
+            <div class="card-title">Pipeline</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <p class="card-desc">CRM pipeline value, deal stages, win rate, MSI calls, site visits and activity leaderboards.</p>
+          <div class="card-tags">
+            <span class="tag">Pipeline Value</span>
+            <span class="tag">Deal Stages</span>
+            <span class="tag">Win Rate</span>
+            <span class="tag">MSI Calls</span>
+            <span class="tag">Site Visits</span>
+          </div>
+        </div>
+        <div class="card-cta">
+          Open Dashboard
+          <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </div>
+      </a>
+
       <a class="card card--management" href="./management/">
         <div class="card-top">
           <div class="card-icon">
             <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           </div>
           <div>
-            <div class="card-num">Dashboard 04</div>
+            <div class="card-num">Dashboard 05</div>
             <div class="card-title">Management</div>
           </div>
         </div>
