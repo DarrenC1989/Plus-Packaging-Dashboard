@@ -45,20 +45,20 @@
   .hero-card.red{background:linear-gradient(135deg,#2a0f0f,#3d1515);border-color:rgba(248,113,113,.25)}
   .hero-card.green{background:linear-gradient(135deg,#0a2a1a,#0f3d25);border-color:rgba(52,211,153,.25)}
   .hero-card.neutral{background:linear-gradient(135deg,#131f3a,#1a2a4a);border-color:var(--border)}
-  .hero-label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:2px;font-family:"Courier New",monospace;color:var(--mu);margin-bottom:1px}
-  .hero-val{font-size:clamp(16px,2vw,28px);font-weight:800;letter-spacing:-1px;line-height:1;color:var(--or)}
+  .hero-label{font-size:clamp(8px,1.1vh,11px);font-weight:700;text-transform:uppercase;letter-spacing:2px;font-family:"Courier New",monospace;color:var(--mu);margin-bottom:1px}
+  .hero-val{font-size:clamp(20px,4.4vh,48px);font-weight:800;letter-spacing:-1px;line-height:1;color:var(--or)}
   .hero-card.green .hero-val{color:var(--gr)}.hero-card.red .hero-val{color:var(--re)}
-  .hero-tgt{font-size:9px;color:var(--mu);margin-top:1px}
+  .hero-tgt{font-size:clamp(9px,1.2vh,12px);color:var(--mu);margin-top:1px}
   .hero-pct-row{display:flex;align-items:center;gap:6px;margin-top:3px}
-  .hero-pct{font-size:clamp(11px,1.4vw,17px);font-weight:800;color:var(--re)}
+  .hero-pct{font-size:clamp(13px,2.3vh,26px);font-weight:800;color:var(--re)}
   .hero-card.green .hero-pct{color:var(--gr)}
-  .hero-badge{font-size:8px;font-weight:700;padding:1px 6px;border-radius:99px;background:rgba(248,113,113,.15);color:var(--re);border:1px solid rgba(248,113,113,.3)}
+  .hero-badge{font-size:clamp(8px,1.1vh,11px);font-weight:700;padding:1px 6px;border-radius:99px;background:rgba(248,113,113,.15);color:var(--re);border:1px solid rgba(248,113,113,.3)}
   .hero-card.green .hero-badge{background:rgba(52,211,153,.15);color:var(--gr);border-color:rgba(52,211,153,.3)}
   .hero-bar-track{height:2px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin-top:4px}
   .hero-bar-fill{height:100%;border-radius:99px;width:0%;transition:width 1.2s cubic-bezier(.4,0,.2,1)}
   .hero-card.green .hero-bar-fill{background:linear-gradient(90deg,#1a8a5a,var(--gr))}
   .hero-card.red .hero-bar-fill{background:linear-gradient(90deg,#8a1a1a,var(--re))}
-  .hero-var{font-size:9px;color:var(--mu);margin-top:2px}
+  .hero-var{font-size:clamp(9px,1.1vh,11px);color:var(--mu);margin-top:2px}
 
   /* ── METRIC ROWS ── */
   .metric-rows{flex:1;display:flex;flex-direction:column;gap:5px;min-height:0;margin-top:6px}
@@ -72,15 +72,15 @@
   .g6{grid-template-columns:repeat(6,1fr)}
 
   /* ── METRIC CARD ── */
-  .mcard{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:8px 11px;opacity:0;transform:translateY(8px);transition:opacity .4s,transform .4s;display:flex;flex-direction:column;justify-content:center;cursor:default}
+  .mcard{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:10px 14px;opacity:0;transform:translateY(8px);transition:opacity .4s,transform .4s;display:flex;flex-direction:column;justify-content:center;cursor:default}
   .mcard.vis{opacity:1;transform:translateY(0)}
   .mcard.clickable{cursor:pointer}
   .mcard.clickable:hover{border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.04)}
-  .mcard-label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1.8px;font-family:"Courier New",monospace;color:var(--mu);margin-bottom:1px}
-  .mcard-sub{font-size:8px;color:var(--mu);margin-bottom:2px}
-  .mcard-val{font-size:clamp(14px,1.7vw,24px);font-weight:800;letter-spacing:-0.5px;line-height:1}
-  .mcard-detail{font-size:9px;color:var(--mu);margin-top:2px}
-  .mcard-drill{font-size:8px;color:var(--mu);margin-top:3px;opacity:.6}
+  .mcard-label{font-size:clamp(8px,1.2vh,12px);font-weight:700;text-transform:uppercase;letter-spacing:1.8px;font-family:"Courier New",monospace;color:var(--mu);margin-bottom:1px}
+  .mcard-sub{font-size:clamp(8px,1.1vh,11px);color:var(--mu);margin-bottom:2px}
+  .mcard-val{font-size:clamp(18px,4.8vh,50px);font-weight:800;letter-spacing:-0.5px;line-height:1}
+  .mcard-detail{font-size:clamp(9px,1.2vh,12px);color:var(--mu);margin-top:2px}
+  .mcard-drill{font-size:clamp(8px,1.1vh,11px);color:var(--mu);margin-top:3px;opacity:.6}
 
   /* card colours */
   .c-or{border-color:rgba(244,124,32,.25);background:linear-gradient(135deg,#1f1208,#2a1a0a)}
@@ -116,6 +116,9 @@
   /* ── RESPONSIVE ── */
   @media(max-width:900px){
     html,body{overflow:auto}
+    .hero-val{font-size:26px}
+    .mcard-val{font-size:26px}
+    .hero-pct{font-size:16px}
     #dashScreen{height:auto}
     main{overflow:visible;padding:10px 12px}
     .hero-row{gap:6px}
@@ -243,6 +246,7 @@
             <div class="mcard-label">Deals Won</div>
             <div class="mcard-sub">Closed this month</div>
             <div class="mcard-val" id="mDealsWon" style="color:var(--gr);">—</div>
+            <div class="mcard-detail" id="mDealsWonVal"></div>
             <div class="mcard-drill">Tap to see breakdown ›</div>
           </div>
           <div class="mcard c-re" id="mc7">
@@ -261,7 +265,7 @@
       <!-- Ops -->
       <div class="metric-section">
         <div class="slbl"><span>Operations &amp; Experience</span><div class="slbll"></div></div>
-        <div class="grid g5">
+        <div class="grid g4">
           <div class="mcard c-am" id="mc8">
             <div class="mcard-label">NPS Score</div>
             <div class="mcard-sub">Last 30 days</div>
@@ -281,11 +285,6 @@
             <div class="mcard-label">Inventory Value</div>
             <div class="mcard-sub">Finance tab D3</div>
             <div class="mcard-val" id="mInvVal" style="color:var(--pu);">—</div>
-          </div>
-          <div class="mcard c-or" id="mc12">
-            <div class="mcard-label">Orders Shipped</div>
-            <div class="mcard-sub">Total shipments today</div>
-            <div class="mcard-val" id="mShipCount" style="color:var(--or);">—</div>
           </div>
         </div>
       </div>
@@ -452,12 +451,14 @@ async function readNPS(){
 async function readCRM(){
   try{
     const from=monthStart(),to=nowISO();
-    const[calls,visits,dealsOpen,dealsWon,dealsLost]=await Promise.all([
+    const[calls,visits,dealsOpen,dealsWon,dealsLost,allOpen]=await Promise.all([
       crmAll(`/phonecalls?$select=subject,actualend,_ownerid_value,new_meaningfulsalesinteraction&$filter=directioncode eq true and statecode eq 1 and new_meaningfulsalesinteraction eq true and actualend ge ${from} and actualend le ${to}&$orderby=actualend desc`),
       crmAll(`/new_sitevisitreports?$select=subject,actualend,createdon,_ownerid_value,_regardingobjectid_value,new_leadapp&$filter=new_leadapp eq true and createdon ge ${from}&$orderby=createdon desc`),
-      crmAll(`/opportunities?$select=name,estimatedvalue,createdon,_ownerid_value&$filter=statecode eq 0 and createdon ge ${from} and createdon le ${to}&$orderby=estimatedvalue desc`),
-      crmAll(`/opportunities?$select=name,estimatedvalue,actualclosedate,_ownerid_value&$filter=statecode eq 1 and actualclosedate ge ${from} and actualclosedate le ${to}&$orderby=estimatedvalue desc`),
+      crmAll(`/opportunities?$select=name,estimatedvalue,createdon,_ownerid_value,_parentaccountid_value&$filter=statecode eq 0 and createdon ge ${from} and createdon le ${to}&$orderby=estimatedvalue desc`),
+      crmAll(`/opportunities?$select=name,estimatedvalue,actualclosedate,_ownerid_value,_parentaccountid_value&$filter=statecode eq 1 and actualclosedate ge ${from} and actualclosedate le ${to}&$orderby=estimatedvalue desc`),
       crmAll(`/opportunities?$select=opportunityid&$filter=statecode eq 2 and actualclosedate ge ${from} and actualclosedate le ${to}`),
+      // ALL open deals — not just this month — for true pipeline value
+      crmAll(`/opportunities?$select=estimatedvalue&$filter=statecode eq 0`),
     ]);
 
     // Aggregate by person
@@ -472,7 +473,7 @@ async function readCRM(){
       return Object.values(map).sort((a,b)=>b.count-a.count);
     };
 
-    const pipelineValue=dealsOpen.reduce((s,r)=>s+(r.estimatedvalue||0),0);
+    const pipelineValue=allOpen.reduce((s,r)=>s+(r.estimatedvalue||0),0);
     const winRate=dealsWon.length+dealsLost.length>0?Math.round(dealsWon.length/(dealsWon.length+dealsLost.length)*100):null;
 
     // Store drill-down data
@@ -540,12 +541,12 @@ function openDrill(type){
     title.textContent="Deals Won This Month";
     const data=drillData.dealsWon||[];
     body.innerHTML=data.length?data.map((p,i)=>{
-      const name=p["_ownerid_value@OData.Community.Display.V1.FormattedValue"]||"Unknown";
-      const deal=p.name||"Unnamed deal";
+      const org=p["_parentaccountid_value@OData.Community.Display.V1.FormattedValue"]||p.name||"Unknown organisation";
+      const owner=p["_ownerid_value@OData.Community.Display.V1.FormattedValue"]||"Unknown";
       return`<div class="modal-row">
         <div class="modal-rank">${i+1}</div>
-        <div class="modal-name" style="flex-direction:column;align-items:flex-start;"><span>${deal}</span><span style="font-size:10px;color:var(--mu);">${name}</span></div>
-        <div class="modal-val">${GBP(p.estimatedvalue)}</div>
+        <div class="modal-name" style="display:flex;flex-direction:column;align-items:flex-start;"><span>${org}</span><span style="font-size:10px;color:var(--mu);">${owner}</span></div>
+        <div class="modal-val" style="color:var(--gr);">${GBP(p.estimatedvalue)}</div>
       </div>`;
     }).join(""):`<div class="modal-empty">No deals won this month</div>`;
   }
@@ -655,23 +656,25 @@ function render(d){
   document.getElementById("mCalls").textContent=INT(d.msiCalls);
   document.getElementById("mVisits").textContent=INT(d.siteVisits);
   document.getElementById("mDeals").textContent=INT(d.dealsOpened);
-  document.getElementById("mDealsWon").textContent=d.dealsWonCount!=null?(INT(d.dealsWonCount)+(d.dealsWonValue?" — "+GBP(d.dealsWonValue):"")):"—";
+  document.getElementById("mDealsWon").textContent=INT(d.dealsWonCount);
+  document.getElementById("mDealsWonVal").textContent=d.dealsWonValue?GBP(d.dealsWonValue)+" won":"";
   document.getElementById("mWinRate").textContent=d.winRate!=null?d.winRate+"%":"—";
   document.getElementById("mPipelineVal").textContent=GBP(d.pipelineValue);
   const npsEl=document.getElementById("mNPS");
-  npsEl.textContent=d.nps!=null?d.nps:"—";
+  npsEl.textContent=d.nps!=null?Number(d.nps).toFixed(1):"—";
   if(d.nps!=null)npsEl.style.color=d.nps>=50?"var(--gr)":d.nps>=0?"var(--am)":"var(--re)";
   document.getElementById("mCatPct").textContent=PCT(d.catPct);
-  document.getElementById("mCatCount").textContent=d.catCount!=null?INT(d.catCount)+(d.catTotal?" / "+INT(d.catTotal):""):"—";
+  document.getElementById("mCatCount").innerHTML=d.catCount!=null
+    ?`<span style="color:var(--cy);">${INT(d.catCount)}</span><span style="color:var(--mu);font-size:.6em;font-weight:600;"> / ${d.catTotal?INT(d.catTotal):"—"}</span>`
+    :"—";
   document.getElementById("mInvVal").textContent=GBP(d.inventoryValue);
-  document.getElementById("mShipCount").textContent=INT(d.shipmentsToday);
 
   // Store order counts for drill-down
   drillData.orderCounts=d.orderProcessorCounts||{};
 
   // Animate
   ["hcSales","hcPM"].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add("vis");},i*80));
-  ["mc0","mc1","mc2","mc3","mc4","mc5","mc6","mc7","mc7a","mc7b","mc8","mc9","mc10","mc11","mc12"].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add("vis");},i*40));
+  ["mc0","mc1","mc2","mc3","mc4","mc5","mc6","mc7","mc7a","mc7b","mc8","mc9","mc10","mc11"].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add("vis");},i*40));
 }
 
 // ── FETCH ─────────────────────────────────────────────────────────────────────
