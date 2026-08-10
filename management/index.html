@@ -430,6 +430,10 @@ async function readNAV(dd){
       ordersToday:j.ordersToday??null,
       shippedToday:j.shippedToday??null,
       shipmentsToday:j.shipmentsToday??null,
+      orderProcessorCounts:j.orderProcessorCounts??{},
+      orderList:j.orderList??[],
+      ordersByCustomer:j.ordersByCustomer??[],
+      shippedByCustomer:j.shippedByCustomer??[],
     };
   }catch(e){console.warn("NAV:",e.message);return{};}
 }
@@ -546,17 +550,60 @@ function openDrill(type){
     }).join(""):`<div class="modal-empty">No deals won this month</div>`;
   }
   else if(type==="orders"){
-    title.textContent="Orders Today — By Order Processor";
-    const counts=drillData.orderCounts||{};
-    const names=drillData.orderNames||{};
-    const sorted=Object.entries(counts).map(([id,count])=>({name:names[id]||id.split("\\").pop(),count})).sort((a,b)=>b.count-a.count);
-    body.innerHTML=sorted.length?sorted.map((p,i)=>row(i+1,p.name,p.count,"orders","","")).join(""):`<div class="modal-empty">No orders processed yet today</div>`;
+    title.textContent="Orders Today — Highest First";
+    renderOrders("list");
   }
   else if(type==="shipped"){
     title.textContent="Shipped Today — By Customer";
     const data=drillData.shippedByCustomer||[];
-    body.innerHTML=data.length?data.map((p,i)=>row(i+1,p.name,GBPd(p.value),"","","")).join(""):`<div class="modal-empty">No shipments recorded today</div>`;
+    if(!data.length){body.innerHTML=`<div class="modal-empty">No shipments recorded today</div>`;}
+    else{
+      body.innerHTML=data.map((c,i)=>{
+        const mPct=c.sales?Math.round(c.margin/c.sales*1000)/10:null;
+        return`<div class="modal-row">
+          <div class="modal-rank">${i+1}</div>
+          <div class="modal-name" style="display:flex;flex-direction:column;align-items:flex-start;">
+            <span>${c.name}</span>
+            <span style="font-size:10px;color:var(--mu);">Margin ${GBPd(c.margin)}${mPct!=null?" &bull; "+mPct.toFixed(1)+"%":""}</span>
+          </div>
+          <div class="modal-val" style="color:var(--gr);">${GBPd(c.sales)}</div>
+        </div>`;
+      }).join("");
+    }
   }
+}
+
+// Orders drill — toggle between individual orders and by-customer
+function renderOrders(mode){
+  const body=document.getElementById("drillBody");
+  const btn=(m,label)=>`<button onclick="renderOrders('${m}')" style="background:${mode===m?"var(--or)":"rgba(255,255,255,.06)"};color:${mode===m?"#fff":"var(--mu)"};border:1px solid ${mode===m?"var(--or)":"var(--border)"};border-radius:7px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer;">${label}</button>`;
+  const tabs=`<div style="display:flex;gap:6px;margin-bottom:10px;">${btn("list","Individual orders")}${btn("cust","By customer")}</div>`;
+
+  let rowsHtml;
+  if(mode==="cust"){
+    const data=drillData.ordersByCustomer||[];
+    rowsHtml=data.length?data.map((c,i)=>`
+      <div class="modal-row">
+        <div class="modal-rank">${i+1}</div>
+        <div class="modal-name" style="display:flex;flex-direction:column;align-items:flex-start;">
+          <span>${c.name}</span>
+          <span style="font-size:10px;color:var(--mu);">${c.count} order${c.count===1?"":"s"}</span>
+        </div>
+        <div class="modal-val" style="color:var(--cy);">${GBPd(c.value)}</div>
+      </div>`).join(""):`<div class="modal-empty">No orders in yet today</div>`;
+  }else{
+    const data=drillData.orderList||[];
+    rowsHtml=data.length?data.map((o,i)=>`
+      <div class="modal-row">
+        <div class="modal-rank">${i+1}</div>
+        <div class="modal-name" style="display:flex;flex-direction:column;align-items:flex-start;">
+          <span>${o.customer}</span>
+          <span style="font-size:10px;color:var(--mu);">${o.no}</span>
+        </div>
+        <div class="modal-val" style="color:var(--cy);">${GBPd(o.amount)}</div>
+      </div>`).join(""):`<div class="modal-empty">No orders in yet today</div>`;
+  }
+  body.innerHTML=tabs+rowsHtml;
 }
 
 function closeDrill(e){
@@ -635,8 +682,11 @@ async function fetchData(){
   try{
     const[dd,nps,crm]=await Promise.all([readDataDump(),readNPS(),readCRM()]);
     const nav=await readNAV(dd);
-    // Store nav order counts for drill
+    // Store NAV breakdowns for drill-downs
     drillData.orderCounts=nav.orderProcessorCounts||{};
+    drillData.orderList=nav.orderList||[];
+    drillData.ordersByCustomer=nav.ordersByCustomer||[];
+    drillData.shippedByCustomer=nav.shippedByCustomer||[];
     render({...dd,...nps,...crm,...nav});
     setStatus("ok");document.getElementById("errb").style.display="none";
   }catch(e){
