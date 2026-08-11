@@ -469,13 +469,21 @@ async function readNPS(){
         drillData.npsError="The feed returned an empty list.";
       }else{
         const pick=(o,keys)=>{for(const k of keys){if(o[k]!=null&&o[k]!=="")return o[k];}return null;};
+        // Normalise date to a sortable number — handles ISO strings and unix seconds/ms
+        const ts=w=>{
+          if(w==null||w==="")return 0;
+          if(!isNaN(w)){const n=Number(w);return n<1e11?n*1000:n;} // seconds vs ms
+          const p=Date.parse(w);
+          return isNaN(p)?0:p;
+        };
         drillData.npsResponses=arr.map(x=>({
           score:   pick(x,["score","Score","nps","NPS","answer","rating","value"]),
           comment: (pick(x,["comment","Comment","note","text","feedback","response"])||"").toString().trim(),
           name:    pick(x,["name","Name","contact_name","fullname","email","Email"])||"Anonymous",
           company: pick(x,["company","Company","organisation","organization","account"])||"",
           when:    pick(x,["answered","created","date","responded","sent","timestamp","answered_date"])||"",
-        })).filter(x=>x.score!=null&&x.score!=="");
+        })).filter(x=>x.score!=null&&x.score!=="")
+           .sort((a,b)=>ts(b.when)-ts(a.when)); // most recent first
         if(!drillData.npsResponses.length){
           drillData.npsError="Found "+arr.length+" record(s) but no score field. Keys on first record: "+Object.keys(arr[0]).join(", ");
         }
