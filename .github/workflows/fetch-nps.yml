@@ -14,18 +14,40 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Fetch AskNicely NPS
+      - name: Fetch AskNicely NPS score
         run: |
-          curl -s \
+          curl -sL \
             -H "X-apikey: ${{ secrets.ASKNICELY_API_KEY }}" \
             "https://pluspackaging.asknice.ly/api/v1/getnps?days=30" \
             -o nps.json
-          echo "NPS fetched"
+          echo "NPS score fetched:"
+          head -c 200 nps.json; echo
 
-      - name: Commit and push nps.json
+      - name: Fetch AskNicely latest responses
+        run: |
+          # /responses/{sort}/{page_size}/{page_number}/{since_unix}/{format}
+          # desc = newest first, 25 per page, page 1, since 0 = all time
+          curl -sL \
+            -H "X-apikey: ${{ secrets.ASKNICELY_API_KEY }}" \
+            "https://pluspackaging.asknice.ly/api/v1/responses/desc/25/1/0/json" \
+            -o nps-responses.raw.json
+          echo "Responses fetched, first 300 chars:"
+          head -c 300 nps-responses.raw.json; echo
+
+          # Only overwrite the live file if we got valid JSON back —
+          # stops a bad API response wiping good data on the dashboard
+          if jq empty nps-responses.raw.json 2>/dev/null; then
+            mv nps-responses.raw.json nps-responses.json
+            echo "Valid JSON — nps-responses.json updated"
+          else
+            echo "::warning::Response was not valid JSON, keeping previous nps-responses.json"
+            rm -f nps-responses.raw.json
+          fi
+
+      - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add nps.json
+          git add nps.json nps-responses.json
           git diff --staged --quiet || git commit -m "Update NPS data [skip ci]"
           git push
