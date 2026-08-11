@@ -169,7 +169,7 @@
 
     <!-- Hero: Sales + PM MTD -->
     <div class="hero-row" style="margin-bottom:6px;">
-      <div class="hero-card neutral" id="hcSales">
+      <div class="hero-card neutral clickable" id="hcSales" onclick="openDrill('repSales')" style="cursor:pointer;">
         <div class="hero-label">Sales MTD</div>
         <div class="hero-val" id="hSalesVal">—</div>
         <div class="hero-tgt">Target: <span id="hSalesTgt">—</span></div>
@@ -177,7 +177,7 @@
         <div class="hero-bar-track"><div class="hero-bar-fill" id="hSalesBar"></div></div>
         <div class="hero-var" id="hSalesVar"></div>
       </div>
-      <div class="hero-card neutral" id="hcPM">
+      <div class="hero-card neutral clickable" id="hcPM" onclick="openDrill('repMargin')" style="cursor:pointer;">
         <div class="hero-label">Product Margin MTD</div>
         <div class="hero-val" id="hPMVal">—</div>
         <div class="hero-tgt">Target: <span id="hPMTgt">—</span></div>
@@ -415,7 +415,127 @@ async function readDataDump(){
     let inventoryValue=null;
     const fin=wb.Sheets["Finance"]||wb.Sheets["FINANCE"]||wb.Sheets["finance"];
     if(fin){const fr=XLSX.utils.sheet_to_json(fin,{header:1,defval:null});inventoryValue=fr[2]?.[3]!=null?Number(fr[2][3]):null;}
-    return{salesYesterday,pmYesterday,salesTarget,pmTarget,ordersTarget,shippedTarget,newCustomers,catPct,catCount,catTotal,inventoryValue};
+
+    // ── Per-salesperson figures (SALES sheet) ────────────────────────────────
+    // Labels are self-describing, e.g. "PPK Total Sales to yesterday" (B31) and
+    // "PPK Product Margin to yesterday" (B35). Scanned by label rather than by
+    // row because the blocks are not contiguous — PPJ sits at rows 80-86.
+    const repSalesY={},repMarginY={};
+    for(const row of rows){
+      const label=row?.[1];
+      if(typeof label!=="string")continue;
+      const v=row[2];
+      if(v==null||v===""||isNaN(Number(v)))continue;
+      let m=label.match(/^(\S+)\s+Total Sales to yesterday$/i);
+      if(m){repSalesY[m[1].toUpperCase()]=Number(v);continue;}
+      m=label.match(/^(\S+)\s+Product Margin to yesterday$/i);
+      if(m){repMarginY[m[1].toUpperCase()]=Number(v);}
+    }
+
+    // Code → team name map (SALES G4:H11 — header "Salesperson Code" / "Sales Team")
+    const repNames={};
+    for(let r=0;r<rows.length;r++){
+      const g=rows[r]?.[6];
+      if(typeof g==="string"&&/salesperson\s*code/i.test(g)){
+        for(let k=r+1;k<rows.length;k++){
+          const code=rows[k]?.[6];
+          if(code==null||String(code).trim()==="")break;
+          repNames[String(code).trim().toUpperCase()]=String(rows[k]?.[7]??"").trim();
+        }
+        break;
+      }
+    }
+
+    // ── Working days (Dates sheet) ───────────────────────────────────────────
+    // JET already calculates these (D19/D20), and they account for the bank
+    // holiday list in column B. Recomputed from that list only as a fallback.
+    let wdGone=null,wdTotal=null;
+    const dates=wb.Sheets["Dates"]||wb.Sheets["DATES"];
+    if(dates){
+      const dr=XLSX.utils.sheet_to_json(dates,{header:1,defval:null});
+      for(const row of dr){
+        const lab=row?.[3];
+        if(typeof lab!=="string")continue;
+        const v=row[4];
+        if(/working days gone/i.test(lab)&&v!=null&&!isNaN(Number(v)))wdGone=Number(v);
+        if(/total working days/i.test(lab)&&v!=null&&!isNaN(Number(v)))wdTotal=Number(v);
+      }
+      if(wdGone==null||wdTotal==null){
+        // Fallback: count weekdays this month, minus bank holidays from column B
+        const hol=new Set();
+        for(const row of dr){
+          const b=row?.[1];
+          if(b instanceof Date)hol.add(b.toISOString().slice(0,10));
+          else if(typeof b==="number"&&b>10000){ // Excel serial
+            const d=new Date(Date.UTC(1899,11,30)+b*86400000);
+            hol.add(d.toISOString().slice(0,10));
+          }
+        }
+        const now=new Date(),y=now.getFullYear(),mo=now.getMonth();
+        const last=new Date(y,mo+1,0).getDate();
+        let tot=0,gone=0;
+        for(let d=1;d<=last;d++){
+          const dt=new Date(y,mo,d),dow=dt.getDay();
+          if(dow===0||dow===6)continue;
+          const key=`${y}-${String(mo+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+          if(hol.has(key))continue;
+          tot++;
+          if(d<=now.getDate())gone++;
+        }
+        if(wdTotal==null)wdTotal=tot;
+        if(wdGone==null)wdGone=gone;
+      }
+    }
+
+    // ── Per-salesperson targets (TARGETS sheet) ──────────────────────────────
+    // Header row 2 carries "<CODE> Sales Target" / "<CODE> Product Margin Target".
+    // Monthly figures are pro-rated by working days gone, matching how the
+    // headline "Sales Target to Date" (C22) is derived.
+    const repTargets={};
+    const tgt=wb.Sheets["TARGETS"]||wb.Sheets["Targets"];
+    if(tgt){
+      const tr=XLSX.utils.sheet_to_json(tgt,{header:1,defval:null});
+      let hdrRow=-1;
+      for(let r=0;r<tr.length;r++){
+        if((tr[r]||[]).some(v=>typeof v==="string"&&/sales target/i.test(v))){hdrRow=r;break;}
+      }
+      if(hdrRow>=0){
+        const hdr=tr[hdrRow]||[];
+        const now=new Date(),y=now.getFullYear(),mo=now.getMonth();
+        const toDate=v=>{
+          if(v instanceof Date)return v;
+          if(typeof v==="number"&&v>10000)return new Date(Date.UTC(1899,11,30)+v*86400000);
+          const p=Date.parse(v);return isNaN(p)?null:new Date(p);
+        };
+        let monthRow=null;
+        for(let r=hdrRow+1;r<tr.length;r++){
+          const d=toDate(tr[r]?.[1]);
+          if(d&&d.getFullYear()===y&&d.getMonth()===mo){monthRow=tr[r];break;}
+        }
+        if(monthRow){
+          const frac=(wdTotal&&wdGone!=null)?(wdGone/wdTotal):1;
+          for(let c=0;c<hdr.length;c++){
+            const h=hdr[c];
+            if(typeof h!=="string")continue;
+            let m=h.match(/^(\S+)\s+Sales Target$/i);
+            const val=monthRow[c];
+            if(m&&val!=null&&val!==""&&!isNaN(Number(val))){
+              const code=m[1].toUpperCase();
+              (repTargets[code]=repTargets[code]||{}).salesTgt=Number(val)*frac;
+              continue;
+            }
+            m=h.match(/^(\S+)\s+Product Margin Target$/i);
+            if(m&&val!=null&&val!==""&&!isNaN(Number(val))){
+              const code=m[1].toUpperCase();
+              (repTargets[code]=repTargets[code]||{}).marginTgt=Number(val)*frac;
+            }
+          }
+        }
+      }
+    }
+
+    return{salesYesterday,pmYesterday,salesTarget,pmTarget,ordersTarget,shippedTarget,newCustomers,catPct,catCount,catTotal,inventoryValue,
+           repSalesY,repMarginY,repNames,repTargets,wdGone,wdTotal};
   }catch(e){console.warn("DataDump:",e.message);return{};}
 }
 
@@ -430,6 +550,7 @@ async function readNAV(dd){
       pm:(dd.pmYesterday??0)+(j.marginToday??0),
       ordersToday:j.ordersToday??null,
       ordersMarginPct:j.ordersMarginPct??null,
+      salesTodayByRep:j.salesTodayByRep??[],
       shippedToday:j.shippedToday??null,
       shipmentsToday:j.shipmentsToday??null,
       orderProcessorCounts:j.orderProcessorCounts??{},
@@ -642,6 +763,45 @@ function openDrill(type){
       }).join("");
     }
   }
+  else if(type==="repSales"||type==="repMargin"){
+    const isMargin=type==="repMargin";
+    title.textContent=(isMargin?"Product Margin MTD":"Sales MTD")+" — By Salesperson Code";
+    const rows=(drillData.repRows||[]).slice().sort((a,b)=>{
+      if(a.isOther)return 1; if(b.isOther)return -1;   // Other always last
+      return isMargin?(b.margin-a.margin):(b.sales-a.sales);
+    });
+
+    if(!rows.length){
+      body.innerHTML=`<div class="modal-empty">No salesperson data available.</div>`;
+    }else{
+      // Warn while the Data Dump block is still being built
+      const partial=!drillData.repHasYesterday
+        ?`<div style="font-size:11px;color:var(--am);background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.25);border-radius:8px;padding:8px 10px;margin-bottom:10px;">Showing <strong>today only</strong> — no per-salesperson month-to-date rows found in the Data Dump.</div>`
+        :(drillData.wdTotal?`<div style="font-size:10px;color:var(--mu);margin-bottom:8px;">Targets pro-rated: ${drillData.wdGone} of ${drillData.wdTotal} working days</div>`:"");
+
+      body.innerHTML=partial+rows.map((r,i)=>{
+        const val=isMargin?r.margin:r.sales;
+        const tgt=isMargin?r.marginTgt:r.salesTgt;
+        const pct=tgt?Math.round(val/tgt*1000)/10:null;
+        const pctCol=pct==null?"var(--mu)":pct>=100?"var(--gr)":"var(--re)";
+        // margin % of that rep's own sales
+        const mPct=r.sales?Math.round(r.margin/r.sales*1000)/10:null;
+        const sub=isMargin
+          ?(mPct!=null?`${mPct.toFixed(1)}% of ${GBP(r.sales)} sales`:"")
+          :(r.margin?`Margin ${GBP(r.margin)}${mPct!=null?` &bull; ${mPct.toFixed(1)}%`:""}`:"");
+        return`
+        <div class="modal-row" style="align-items:center;">
+          <div class="modal-rank">${i+1}</div>
+          <div class="modal-name" style="display:flex;flex-direction:column;align-items:flex-start;">
+            <span style="${r.isOther?"color:var(--mu);":""}">${r.code}${r.name?` <span style="color:var(--mu);font-weight:400;font-size:10px;">${r.name}</span>`:""}</span>
+            ${sub?`<span style="font-size:10px;color:var(--mu);">${sub}</span>`:""}
+          </div>
+          ${tgt?`<div style="font-size:11px;font-weight:700;color:${pctCol};margin-right:8px;white-space:nowrap;">${pct.toFixed(1)}%</div>`:""}
+          <div class="modal-val" style="color:${isMargin?"var(--gr)":"var(--or)"};">${GBP(val)}</div>
+        </div>`;
+      }).join("");
+    }
+  }
   else if(type==="orders"){
     title.textContent="Orders Today — Highest First";
     renderOrders("list");
@@ -657,7 +817,7 @@ function openDrill(type){
           <div class="modal-rank">${i+1}</div>
           <div class="modal-name" style="display:flex;flex-direction:column;align-items:flex-start;">
             <span>${c.name}</span>
-            <span style="font-size:10px;color:var(--mu);">Margin ${GBPd(c.margin)}${mPct!=null?" &bull; "+mPct.toFixed(1)+"%":""}</span>
+            <span style="font-size:10px;color:var(--mu);">${c.rep?c.rep+" &bull; ":""}Margin ${GBPd(c.margin)}${mPct!=null?" &bull; "+mPct.toFixed(1)+"%":""}</span>
           </div>
           <div class="modal-val" style="color:var(--gr);">${GBPd(c.sales)}</div>
         </div>`;
@@ -682,7 +842,7 @@ function renderOrders(mode){
         <div class="modal-rank">${i+1}</div>
         <div class="modal-name" style="display:flex;flex-direction:column;align-items:flex-start;">
           <span>${c.name}</span>
-          <span style="font-size:10px;color:var(--mu);">${c.count} order${c.count===1?"":"s"} &bull; ${mg(c)}</span>
+          <span style="font-size:10px;color:var(--mu);">${c.count} order${c.count===1?"":"s"}${c.rep?" &bull; "+c.rep:""} &bull; ${mg(c)}</span>
         </div>
         <div class="modal-val" style="color:var(--cy);">${GBPd(c.value)}</div>
       </div>`).join(""):`<div class="modal-empty">No orders in yet today</div>`;
@@ -693,7 +853,7 @@ function renderOrders(mode){
         <div class="modal-rank">${i+1}</div>
         <div class="modal-name" style="display:flex;flex-direction:column;align-items:flex-start;">
           <span>${o.customer}</span>
-          <span style="font-size:10px;color:var(--mu);">${o.no} &bull; ${mg(o)}</span>
+          <span style="font-size:10px;color:var(--mu);">${o.no}${o.rep?" &bull; "+o.rep:""} &bull; ${mg(o)}</span>
         </div>
         <div class="modal-val" style="color:var(--cy);">${GBPd(o.amount)}</div>
       </div>`).join(""):`<div class="modal-empty">No orders in yet today</div>`;
@@ -713,7 +873,8 @@ function renderHero(cardId,valId,tgtId,pctId,badgeId,barId,varId,value,target){
   const card=document.getElementById(cardId);
   const pct=value&&target?Math.round((value/target)*1000)/10:null;
   const onTarget=pct!=null&&pct>=100;
-  card.className="hero-card "+(pct==null?"neutral":onTarget?"green":"red")+" vis";
+  card.className="hero-card "+(pct==null?"neutral":onTarget?"green":"red")+" vis clickable";
+  card.style.cursor="pointer";
   document.getElementById(valId).textContent=GBPd(value);
   document.getElementById(tgtId).textContent=GBPd(target);
   document.getElementById(pctId).textContent=pct!=null?pct.toFixed(1)+"%":"—";
@@ -780,6 +941,45 @@ async function fetchData(){
   try{
     const[dd,nps,crm]=await Promise.all([readDataDump(),readNPS(),readCRM()]);
     const nav=await readNAV(dd);
+
+    // Per-salesperson MTD = yesterday (Data Dump) + today (NAV), same pattern
+    // as the headline figures. "Other" is the residual against the headline
+    // totals, so any activity outside the named codes is still accounted for.
+    {
+      const yS=dd.repSalesY||{}, yM=dd.repMarginY||{};
+      const names=dd.repNames||{}, tgts=dd.repTargets||{};
+      const today=nav.salesTodayByRep||[];
+      const codes=Object.keys(names).length?Object.keys(names)
+                 :[...new Set([...Object.keys(yS),...Object.keys(yM)])];
+
+      const rows=codes.map(code=>{
+        const t=today.find(x=>(x.code||"").toUpperCase()===code)||{};
+        return{
+          code,
+          name:      names[code]||"",
+          sales:     (yS[code]??0)+(t.sales??0),
+          margin:    (yM[code]??0)+(t.margin??0),
+          salesTgt:  tgts[code]?.salesTgt??null,
+          marginTgt: tgts[code]?.marginTgt??null,
+        };
+      }).sort((a,b)=>b.sales-a.sales);
+
+      // Residual — headline total less the named codes
+      const totS=(dd.salesYesterday??0)+(nav.salesToday??0);
+      const totM=(dd.pmYesterday??0)+(nav.marginToday??0);
+      const sumS=rows.reduce((s,r)=>s+r.sales,0);
+      const sumM=rows.reduce((s,r)=>s+r.margin,0);
+      const othS=Math.round((totS-sumS)*100)/100;
+      const othM=Math.round((totM-sumM)*100)/100;
+      if(Math.abs(othS)>=0.01||Math.abs(othM)>=0.01){
+        rows.push({code:"Other",name:"Unassigned / house",sales:othS,margin:othM,salesTgt:null,marginTgt:null,isOther:true});
+      }
+
+      drillData.repRows=rows;
+      drillData.repHasYesterday=Object.keys(yS).length>0;
+      drillData.wdGone=dd.wdGone;drillData.wdTotal=dd.wdTotal;
+    }
+
     // Store NAV breakdowns for drill-downs
     drillData.orderCounts=nav.orderProcessorCounts||{};
     drillData.orderList=nav.orderList||[];
