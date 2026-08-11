@@ -557,6 +557,7 @@ async function readNAV(dd){
       orderList:j.orderList??[],
       ordersByCustomer:j.ordersByCustomer??[],
       shippedByCustomer:j.shippedByCustomer??[],
+      shippedCustomerCount:j.shippedCustomerCount??0,
     };
   }catch(e){console.warn("NAV:",e.message);return{};}
 }
@@ -811,7 +812,10 @@ function openDrill(type){
     const data=drillData.shippedByCustomer||[];
     if(!data.length){body.innerHTML=`<div class="modal-empty">No shipments recorded today</div>`;}
     else{
-      body.innerHTML=data.map((c,i)=>{
+      const total=data.reduce((s,c)=>s+c.sales,0);
+      const n=drillData.shippedCustomerCount||data.length;
+      const note=`<div style="font-size:10px;color:var(--mu);margin-bottom:8px;">${n} customer${n===1?"":"s"} &bull; ${GBPd(total)} shown${n>data.length?` &bull; top ${data.length} listed`:""}</div>`;
+      body.innerHTML=note+data.map((c,i)=>{
         const mPct=c.sales?Math.round(c.margin/c.sales*1000)/10:null;
         return`<div class="modal-row">
           <div class="modal-rank">${i+1}</div>
@@ -964,9 +968,13 @@ async function fetchData(){
         };
       }).sort((a,b)=>b.sales-a.sales);
 
-      // Residual — headline total less the named codes
-      const totS=(dd.salesYesterday??0)+(nav.salesToday??0);
-      const totM=(dd.pmYesterday??0)+(nav.marginToday??0);
+      // Residual — headline total less the named codes.
+      // NOTE: nav.sales / nav.pm are already yesterday + today combined (they
+      // are what the hero cards show). Do not rebuild the total from
+      // dd.salesYesterday + nav.salesToday — readNAV exposes no salesToday key,
+      // so that silently omitted today and drove Other negative.
+      const totS=(nav.sales!=null)?nav.sales:(dd.salesYesterday??0);
+      const totM=(nav.pm!=null)?nav.pm:(dd.pmYesterday??0);
       const sumS=rows.reduce((s,r)=>s+r.sales,0);
       const sumM=rows.reduce((s,r)=>s+r.margin,0);
       const othS=Math.round((totS-sumS)*100)/100;
@@ -985,6 +993,7 @@ async function fetchData(){
     drillData.orderList=nav.orderList||[];
     drillData.ordersByCustomer=nav.ordersByCustomer||[];
     drillData.shippedByCustomer=nav.shippedByCustomer||[];
+    drillData.shippedCustomerCount=nav.shippedCustomerCount||0;
     render({...dd,...nps,...crm,...nav});
     setStatus("ok");document.getElementById("errb").style.display="none";
   }catch(e){
