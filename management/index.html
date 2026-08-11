@@ -469,20 +469,24 @@ async function readNPS(){
         drillData.npsError="The feed returned an empty list.";
       }else{
         const pick=(o,keys)=>{for(const k of keys){if(o[k]!=null&&o[k]!=="")return o[k];}return null;};
-        // Normalise date to a sortable number — handles ISO strings and unix seconds/ms
+        // Unix seconds (AskNicely) or ISO string → sortable ms
         const ts=w=>{
           if(w==null||w==="")return 0;
-          if(!isNaN(w)){const n=Number(w);return n<1e11?n*1000:n;} // seconds vs ms
+          if(!isNaN(w)){const n=Number(w);return n<1e11?n*1000:n;}
           const p=Date.parse(w);
           return isNaN(p)?0:p;
         };
         drillData.npsResponses=arr.map(x=>({
-          score:   pick(x,["score","Score","nps","NPS","answer","rating","value"]),
-          comment: (pick(x,["comment","Comment","note","text","feedback","response"])||"").toString().trim(),
-          name:    pick(x,["name","Name","contact_name","fullname","email","Email"])||"Anonymous",
-          company: pick(x,["company","Company","organisation","organization","account"])||"",
-          when:    pick(x,["answered","created","date","responded","sent","timestamp","answered_date"])||"",
-        })).filter(x=>x.score!=null&&x.score!=="")
+          score:   Number(pick(x,["answer","score","Score","nps","NPS","rating","value"])),
+          comment: (pick(x,["comment","Comment","note","text","feedback"])||"").toString().trim(),
+          topic:   (pick(x,["topic_c","topic","theme"])||"").toString().trim(),
+          name:    pick(x,["name","publishedname","Name","contact_name","email","Email"])||"Anonymous",
+          segment: (pick(x,["segment","Segment"])||"").toString().trim(),
+          rep:     (pick(x,["salesperson_c","salesperson"])||"").toString().trim(),
+          // NOTE: "responded" is when they answered. Do NOT use "created" —
+          // that is when the contact was added to AskNicely, often years earlier.
+          when:    pick(x,["responded","opened","sent","lastemailed","answered","date","timestamp"])||"",
+        })).filter(x=>!isNaN(x.score))
            .sort((a,b)=>ts(b.when)-ts(a.when)); // most recent first
         if(!drillData.npsResponses.length){
           drillData.npsError="Found "+arr.length+" record(s) but no score field. Keys on first record: "+Object.keys(arr[0]).join(", ");
@@ -611,18 +615,31 @@ function openDrill(type){
         const d=new Date(isNaN(w)?w:Number(w)*1000);
         return isNaN(d.getTime())?"":d.toLocaleDateString("en-GB",{day:"numeric",month:"short"});
       };
-      body.innerHTML=data.map(r=>`
+      // AskNicely returns double-encoded entities (&amp;amp;) — decode then re-escape
+      const dec=s=>{const t=document.createElement("textarea");t.innerHTML=s;let o=t.value;t.innerHTML=o;return t.value;};
+      const esc=s=>String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+      const safe=s=>esc(dec(s));
+
+      body.innerHTML=data.map(r=>{
+        const meta=[r.segment,r.rep?"Rep "+r.rep:""].filter(Boolean).join(" &bull; ");
+        const said=r.comment
+          ?`<div style="font-size:11px;color:var(--ow);opacity:.75;margin-top:3px;line-height:1.4;">&ldquo;${safe(r.comment)}&rdquo;</div>`
+          :(r.topic
+            ?`<div style="font-size:10px;color:var(--mu);margin-top:3px;">Wants: ${safe(r.topic)}</div>`
+            :`<div style="font-size:10px;color:var(--mu);font-style:italic;margin-top:3px;">No comment left</div>`);
+        return`
         <div class="modal-row" style="align-items:flex-start;">
           <div style="flex-shrink:0;width:34px;text-align:center;">
             <div style="font-size:19px;font-weight:800;color:${col(r.score)};line-height:1;">${r.score}</div>
             <div style="font-size:7px;text-transform:uppercase;letter-spacing:.5px;color:${col(r.score)};opacity:.8;">${lbl(r.score)}</div>
           </div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:12px;font-weight:600;color:var(--ow);">${r.name}${r.company?` <span style="color:var(--mu);font-weight:400;">&bull; ${r.company}</span>`:""}</div>
-            ${r.comment?`<div style="font-size:11px;color:var(--ow);opacity:.75;margin-top:3px;line-height:1.4;">&ldquo;${r.comment}&rdquo;</div>`:`<div style="font-size:10px;color:var(--mu);font-style:italic;margin-top:3px;">No comment left</div>`}
+            <div style="font-size:12px;font-weight:600;color:var(--ow);word-break:break-word;">${safe(r.name)}${meta?` <span style="color:var(--mu);font-weight:400;font-size:10px;">&bull; ${meta}</span>`:""}</div>
+            ${said}
           </div>
           <div style="font-size:10px;color:var(--mu);flex-shrink:0;">${when(r.when)}</div>
-        </div>`).join("");
+        </div>`;
+      }).join("");
     }
   }
   else if(type==="orders"){
