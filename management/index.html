@@ -451,19 +451,37 @@ async function readNPS(){
   // Latest individual responses (separate file, written by the same GH Action)
   try{
     const r2=await fetch("../nps-responses.json?t="+Date.now(),{signal:AbortSignal.timeout(5000)});
-    if(r2.ok){
+    if(!r2.ok){drillData.npsError="File not found (HTTP "+r2.status+")";}
+    else{
       const raw=await r2.json();
-      // AskNicely may return a bare array or wrap it in {data:[...]} / {responses:[...]}
-      const arr=Array.isArray(raw)?raw:(raw.data||raw.responses||raw.results||[]);
-      drillData.npsResponses=arr.map(x=>({
-        score:   x.score??x.Score??x.nps??x.answer??null,
-        comment: (x.comment??x.Comment??x.note??x.text??"").toString().trim(),
-        name:    x.name??x.Name??x.contact_name??x.email??x.Email??"Anonymous",
-        company: x.company??x.Company??x.organisation??x.organization??"",
-        when:    x.answered??x.created??x.date??x.responded??x.sent??x.timestamp??"",
-      })).filter(x=>x.score!=null);
+      // AskNicely may return a bare array or wrap it under various keys
+      let arr=Array.isArray(raw)?raw:null;
+      if(!arr){
+        for(const k of ["data","responses","results","items","rows"]){
+          if(Array.isArray(raw[k])){arr=raw[k];break;}
+        }
+        // last resort — first array-valued property on the object
+        if(!arr){const hit=Object.values(raw).find(v=>Array.isArray(v));if(hit)arr=hit;}
+      }
+      if(!arr){
+        drillData.npsError="Could not find a list of responses. Top-level keys: "+Object.keys(raw).join(", ");
+      }else if(!arr.length){
+        drillData.npsError="The feed returned an empty list.";
+      }else{
+        const pick=(o,keys)=>{for(const k of keys){if(o[k]!=null&&o[k]!=="")return o[k];}return null;};
+        drillData.npsResponses=arr.map(x=>({
+          score:   pick(x,["score","Score","nps","NPS","answer","rating","value"]),
+          comment: (pick(x,["comment","Comment","note","text","feedback","response"])||"").toString().trim(),
+          name:    pick(x,["name","Name","contact_name","fullname","email","Email"])||"Anonymous",
+          company: pick(x,["company","Company","organisation","organization","account"])||"",
+          when:    pick(x,["answered","created","date","responded","sent","timestamp","answered_date"])||"",
+        })).filter(x=>x.score!=null&&x.score!=="");
+        if(!drillData.npsResponses.length){
+          drillData.npsError="Found "+arr.length+" record(s) but no score field. Keys on first record: "+Object.keys(arr[0]).join(", ");
+        }
+      }
     }
-  }catch(e){console.warn("NPS responses:",e.message);}
+  }catch(e){drillData.npsError=e.message;console.warn("NPS responses:",e.message);}
 
   return{nps};
 }
@@ -575,7 +593,7 @@ function openDrill(type){
     title.textContent="NPS — Latest Responses";
     const data=drillData.npsResponses||[];
     if(!data.length){
-      body.innerHTML=`<div class="modal-empty">No responses available. Check the nps-responses.json feed.</div>`;
+      body.innerHTML=`<div class="modal-empty">${drillData.npsError||"No responses available."}</div>`;
     }else{
       // Promoter 9–10 green, passive 7–8 amber, detractor 0–6 red
       const col=s=>s>=9?"var(--gr)":s>=7?"var(--am)":"var(--re)";
