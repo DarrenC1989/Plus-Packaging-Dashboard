@@ -229,18 +229,21 @@
             <div class="mcard-label">MSI Calls</div>
             <div class="mcard-sub">Meaningful outbound</div>
             <div class="mcard-val" id="mCalls" style="color:var(--cy);">—</div>
+            <div class="mcard-detail" id="mCallsTgt"></div>
             <div class="mcard-drill">Tap to see breakdown ›</div>
           </div>
           <div class="mcard c-pu clickable" id="mc5" onclick="openDrill('visits')">
             <div class="mcard-label">Site Visits</div>
             <div class="mcard-sub">Spoke to buyer</div>
             <div class="mcard-val" id="mVisits" style="color:var(--pu);">—</div>
+            <div class="mcard-detail" id="mVisitsTgt"></div>
             <div class="mcard-drill">Tap to see breakdown ›</div>
           </div>
           <div class="mcard c-or clickable" id="mc6" onclick="openDrill('dealsOpen')">
             <div class="mcard-label">Deals Opened</div>
             <div class="mcard-sub">New opportunities</div>
             <div class="mcard-val" id="mDeals" style="color:var(--or);">—</div>
+            <div class="mcard-detail" id="mDealsTgt"></div>
             <div class="mcard-drill">Tap to see breakdown ›</div>
           </div>
           <div class="mcard c-gr clickable" id="mc7b" onclick="openDrill('dealsWon')">
@@ -487,6 +490,56 @@ async function readDataDump(){
       }
     }
 
+    // Pro-ration fraction, shared with the CRM targets block below.
+    const wdFrac=(wdTotal&&wdGone!=null)?(wdGone/wdTotal):1;
+
+    // ── CRM activity targets (CRM Targets sheet) ─────────────────────────────
+    // Two-row header: row 2 = category ("MSI Phone Call Target" /
+    // "MSI Site Visit Target" / "Deals Opened Target"), row 3 = person name for
+    // that column. Column B holds the month as a NAME ("August"), not a date —
+    // different from the TARGETS sheet — so matched on month name, not Date().
+    // Pro-rated by the same working-days fraction as the sales/margin targets,
+    // for the same reason: these are full-month figures and we want "target
+    // to date" to compare fairly against a part-built month.
+    const crmTargets={calls:{overall:0,byPerson:{}},visits:{overall:0,byPerson:{}},dealsOpen:{overall:0,byPerson:{}}};
+    const crmTgtSheet=wb.Sheets["CRM Targets"];
+    if(crmTgtSheet){
+      const cr=XLSX.utils.sheet_to_json(crmTgtSheet,{header:1,defval:null});
+      let hdrRow=-1;
+      for(let r=0;r<cr.length;r++){
+        if((cr[r]||[]).some(v=>typeof v==="string"&&/target/i.test(v))){hdrRow=r;break;}
+      }
+      if(hdrRow>=0){
+        const catRow=cr[hdrRow]||[];
+        const nameRow=cr[hdrRow+1]||[];
+        const monthName=new Date().toLocaleString("en-US",{month:"long"}).toLowerCase();
+        let monthRow=null;
+        for(let r=hdrRow+2;r<cr.length;r++){
+          const b=cr[r]?.[1];
+          if(typeof b==="string"&&b.trim().toLowerCase()===monthName){monthRow=cr[r];break;}
+        }
+        if(monthRow){
+          const catKey=cat=>{
+            if(!cat)return null;
+            if(/phone call/i.test(cat))return"calls";
+            if(/site visit/i.test(cat))return"visits";
+            if(/deals opened/i.test(cat))return"dealsOpen";
+            return null;
+          };
+          for(let c=2;c<catRow.length;c++){
+            const key=catKey(catRow[c]);
+            if(!key)continue;
+            const person=(nameRow[c]||"").toString().trim();
+            const val=monthRow[c];
+            if(!person||val==null||val===""||isNaN(Number(val)))continue;
+            const prorated=Number(val)*wdFrac;
+            crmTargets[key].byPerson[person]=(crmTargets[key].byPerson[person]||0)+prorated;
+            crmTargets[key].overall+=prorated;
+          }
+        }
+      }
+    }
+
     // ── Per-salesperson targets (TARGETS sheet) ──────────────────────────────
     // Header row 2 carries "<CODE> Sales Target" / "<CODE> Product Margin Target".
     // Monthly figures are pro-rated by working days gone, matching how the
@@ -513,7 +566,6 @@ async function readDataDump(){
           if(d&&d.getFullYear()===y&&d.getMonth()===mo){monthRow=tr[r];break;}
         }
         if(monthRow){
-          const frac=(wdTotal&&wdGone!=null)?(wdGone/wdTotal):1;
           for(let c=0;c<hdr.length;c++){
             const h=hdr[c];
             if(typeof h!=="string")continue;
@@ -521,13 +573,13 @@ async function readDataDump(){
             const val=monthRow[c];
             if(m&&val!=null&&val!==""&&!isNaN(Number(val))){
               const code=m[1].toUpperCase();
-              (repTargets[code]=repTargets[code]||{}).salesTgt=Number(val)*frac;
+              (repTargets[code]=repTargets[code]||{}).salesTgt=Number(val)*wdFrac;
               continue;
             }
             m=h.match(/^(\S+)\s+Product Margin Target$/i);
             if(m&&val!=null&&val!==""&&!isNaN(Number(val))){
               const code=m[1].toUpperCase();
-              (repTargets[code]=repTargets[code]||{}).marginTgt=Number(val)*frac;
+              (repTargets[code]=repTargets[code]||{}).marginTgt=Number(val)*wdFrac;
             }
           }
         }
@@ -535,7 +587,7 @@ async function readDataDump(){
     }
 
     return{salesYesterday,pmYesterday,salesTarget,pmTarget,ordersTarget,shippedTarget,newCustomers,catPct,catCount,catTotal,inventoryValue,
-           repSalesY,repMarginY,repNames,repTargets,wdGone,wdTotal};
+           repSalesY,repMarginY,repNames,repTargets,crmTargets,wdGone,wdTotal};
   }catch(e){console.warn("DataDump:",e.message);return{};}
 }
 
@@ -679,6 +731,19 @@ const GBPd=v=>v==null?"—":"£"+Number(v).toLocaleString("en-GB",{minimumFracti
 const PCT=v=>v==null?"—":Number(v).toFixed(1)+"%";
 const INT=v=>v==null?"—":Math.round(Number(v)).toLocaleString("en-GB");
 
+// Target-to-date line under a count-based card, e.g. "Target: 704 · 78%".
+// Rounds the (pro-rated) target to a whole number for display since the
+// underlying counts are whole numbers — the fraction only exists to keep the
+// comparison fair partway through the month.
+function fmtTgtLine(actual,target){
+  if(target==null)return"";
+  const t=Math.round(target);
+  if(actual==null)return`Target: ${INT(t)}`;
+  const pct=t?Math.round(actual/t*1000)/10:null;
+  const col=pct==null?"var(--mu)":pct>=100?"var(--gr)":"var(--am)";
+  return`Target: ${INT(t)}${pct!=null?` &bull; <span style="color:${col};font-weight:700;">${pct.toFixed(1)}%</span>`:""}`;
+}
+
 // ── DRILL-DOWN ────────────────────────────────────────────────────────────────
 function openDrill(type){
   const overlay=document.getElementById("drillOverlay");
@@ -695,20 +760,70 @@ function openDrill(type){
       ${sub?`<div class="modal-sub">${sub}</div>`:""}
     </div>`;
 
+  // Row for a person-level CRM activity metric: actual count vs pro-rated
+  // target for that person, matched by name (case/whitespace-insensitive —
+  // the CRM Targets sheet has trailing spaces on some names, e.g. "Kyle Wells ").
+  const personTargetRow=(rank,name,actual,targetsByPerson)=>{
+    const norm=s=>(s||"").toString().trim().toLowerCase();
+    const key=Object.keys(targetsByPerson||{}).find(k=>norm(k)===norm(name));
+    const target=key!=null?targetsByPerson[key]:null;
+    const t=target!=null?Math.round(target):null;
+    const pct=t?Math.round(actual/t*1000)/10:null;
+    const pctCol=pct==null?"var(--mu)":pct>=100?"var(--gr)":"var(--am)";
+    return`
+    <div class="modal-row">
+      <div class="modal-rank">${rank}</div>
+      <div class="modal-name">${name}</div>
+      ${t!=null?`<div style="font-size:11px;color:var(--mu);margin-right:4px;">of ${t}</div>`:""}
+      ${pct!=null?`<div style="font-size:11px;font-weight:700;color:${pctCol};margin-right:6px;">${pct.toFixed(1)}%</div>`:""}
+      <div class="modal-val">${actual}</div>
+    </div>`;
+  };
+
+  // Merge CRM actuals with anyone who has a target but no activity yet, so a
+  // rep who hasn't made a call this month still appears at 0 rather than
+  // being silently absent from the list.
+  const mergeWithTargets=(actualRows,targetsByPerson)=>{
+    const norm=s=>(s||"").toString().trim().toLowerCase();
+    const seen=new Set(actualRows.map(r=>norm(r.name)));
+    const extra=Object.keys(targetsByPerson||{})
+      .filter(name=>!seen.has(norm(name)))
+      .map(name=>({name,count:0}));
+    return[...actualRows,...extra].sort((a,b)=>b.count-a.count);
+  };
+
   if(type==="calls"){
     title.textContent="MSI Calls This Month — By Person";
-    const data=drillData.calls||[];
-    body.innerHTML=data.length?data.map((p,i)=>row(i+1,p.name,p.count,"calls","","")).join(""):`<div class="modal-empty">No calls recorded this month</div>`;
+    const tgts=drillData.crmTargets?.calls?.byPerson||{};
+    const data=mergeWithTargets(drillData.calls||[],tgts);
+    body.innerHTML=data.length?data.map((p,i)=>personTargetRow(i+1,p.name,p.count,tgts)).join(""):`<div class="modal-empty">No calls recorded this month</div>`;
   }
   else if(type==="visits"){
     title.textContent="Site Visits This Month — By Person";
-    const data=drillData.visits||[];
-    body.innerHTML=data.length?data.map((p,i)=>row(i+1,p.name,p.count,"visits","","")).join(""):`<div class="modal-empty">No site visits recorded this month</div>`;
+    const tgts=drillData.crmTargets?.visits?.byPerson||{};
+    const data=mergeWithTargets(drillData.visits||[],tgts);
+    body.innerHTML=data.length?data.map((p,i)=>personTargetRow(i+1,p.name,p.count,tgts)).join(""):`<div class="modal-empty">No site visits recorded this month</div>`;
   }
   else if(type==="dealsOpen"){
     title.textContent="Deals Opened This Month — By Person";
-    const data=drillData.dealsOpen||[];
-    body.innerHTML=data.length?data.map((p,i)=>row(i+1,p.name,p.count,"deals",GBP(p.value),"value")).join(""):`<div class="modal-empty">No deals opened this month</div>`;
+    const tgts=drillData.crmTargets?.dealsOpen?.byPerson||{};
+    const data=mergeWithTargets(drillData.dealsOpen||[],tgts);
+    body.innerHTML=data.length?data.map((p,i)=>{
+      const norm=s=>(s||"").toString().trim().toLowerCase();
+      const key=Object.keys(tgts).find(k=>norm(k)===norm(p.name));
+      const t=key!=null?Math.round(tgts[key]):null;
+      const pct=t?Math.round(p.count/t*1000)/10:null;
+      const pctCol=pct==null?"var(--mu)":pct>=100?"var(--gr)":"var(--am)";
+      return`
+      <div class="modal-row">
+        <div class="modal-rank">${i+1}</div>
+        <div class="modal-name" style="display:flex;flex-direction:column;align-items:flex-start;">
+          <span>${p.name}</span>
+          <span style="font-size:10px;color:var(--mu);">${p.count} deal${p.count===1?"":"s"}${t!=null?` of ${t} target`:""}${pct!=null?` <span style="color:${pctCol};font-weight:700;">(${pct.toFixed(1)}%)</span>`:""}</span>
+        </div>
+        <div class="modal-val" style="color:var(--or);">${GBP(p.value)}</div>
+      </div>`;
+    }).join(""):`<div class="modal-empty">No deals opened this month</div>`;
   }
   else if(type==="dealsWon"){
     title.textContent="Deals Won This Month";
@@ -914,8 +1029,11 @@ function render(d){
   document.getElementById("mShippedTgt").textContent=d.shippedTarget?"Target: "+GBPd(d.shippedTarget):"";
   document.getElementById("mNewCust").textContent=INT(d.newCustomers);
   document.getElementById("mCalls").textContent=INT(d.msiCalls);
+  document.getElementById("mCallsTgt").innerHTML=fmtTgtLine(d.msiCalls,d.callsTarget);
   document.getElementById("mVisits").textContent=INT(d.siteVisits);
+  document.getElementById("mVisitsTgt").innerHTML=fmtTgtLine(d.siteVisits,d.visitsTarget);
   document.getElementById("mDeals").textContent=INT(d.dealsOpened);
+  document.getElementById("mDealsTgt").innerHTML=fmtTgtLine(d.dealsOpened,d.dealsOpenTarget);
   document.getElementById("mDealsWon").textContent=INT(d.dealsWonCount);
   document.getElementById("mDealsWonVal").textContent=d.dealsWonValue?GBP(d.dealsWonValue)+" won":"";
   document.getElementById("mWinRate").textContent=d.winRate!=null?d.winRate+"%":"—";
@@ -994,7 +1112,17 @@ async function fetchData(){
     drillData.ordersByCustomer=nav.ordersByCustomer||[];
     drillData.shippedByCustomer=nav.shippedByCustomer||[];
     drillData.shippedCustomerCount=nav.shippedCustomerCount||0;
-    render({...dd,...nps,...crm,...nav});
+
+    // CRM activity targets (calls / visits / deals opened), from Data Dump —
+    // stored for the drill-down tables; overall figures also passed to render()
+    // for the card totals.
+    drillData.crmTargets=dd.crmTargets||null;
+
+    render({...dd,...nps,...crm,...nav,
+      callsTarget:    dd.crmTargets?.calls?.overall     ?? null,
+      visitsTarget:   dd.crmTargets?.visits?.overall    ?? null,
+      dealsOpenTarget:dd.crmTargets?.dealsOpen?.overall ?? null,
+    });
     setStatus("ok");document.getElementById("errb").style.display="none";
   }catch(e){
     setStatus("er");
