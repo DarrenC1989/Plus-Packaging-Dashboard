@@ -217,6 +217,7 @@
             <div class="mcard-label">New Customers</div>
             <div class="mcard-sub">This month</div>
             <div class="mcard-val" id="mNewCust" style="color:var(--am);">—</div>
+            <div class="mcard-detail" id="mNewCustTgt"></div>
           </div>
         </div>
       </div>
@@ -545,6 +546,7 @@ async function readDataDump(){
     // Monthly figures are pro-rated by working days gone, matching how the
     // headline "Sales Target to Date" (C22) is derived.
     const repTargets={};
+    let newCustomersTarget=null;
     const tgt=wb.Sheets["TARGETS"]||wb.Sheets["Targets"];
     if(tgt){
       const tr=XLSX.utils.sheet_to_json(tgt,{header:1,defval:null});
@@ -580,13 +582,18 @@ async function readDataDump(){
             if(m&&val!=null&&val!==""&&!isNaN(Number(val))){
               const code=m[1].toUpperCase();
               (repTargets[code]=repTargets[code]||{}).marginTgt=Number(val)*wdFrac;
+              continue;
+            }
+            // "New Customers" — single company-wide column, not per-code
+            if(/^new customers$/i.test(h.trim())&&val!=null&&val!==""&&!isNaN(Number(val))){
+              newCustomersTarget=Number(val)*wdFrac;
             }
           }
         }
       }
     }
 
-    return{salesYesterday,pmYesterday,salesTarget,pmTarget,ordersTarget,shippedTarget,newCustomers,catPct,catCount,catTotal,inventoryValue,
+    return{salesYesterday,pmYesterday,salesTarget,pmTarget,ordersTarget,shippedTarget,newCustomers,newCustomersTarget,catPct,catCount,catTotal,inventoryValue,
            repSalesY,repMarginY,repNames,repTargets,crmTargets,wdGone,wdTotal};
   }catch(e){console.warn("DataDump:",e.message);return{};}
 }
@@ -900,6 +907,10 @@ function openDrill(type){
         const tgt=isMargin?r.marginTgt:r.salesTgt;
         const pct=tgt?Math.round(val/tgt*1000)/10:null;
         const pctCol=pct==null?"var(--mu)":pct>=100?"var(--gr)":"var(--re)";
+        // The big value itself is red/green against target where a target
+        // exists; codes with no target (or "Other") keep a neutral colour
+        // rather than implying an on/off-target judgement that can't be made.
+        const valCol=r.isOther?"var(--mu)":(tgt?pctCol:(isMargin?"var(--gr)":"var(--or)"));
         // margin % of that rep's own sales
         const mPct=r.sales?Math.round(r.margin/r.sales*1000)/10:null;
         const sub=isMargin
@@ -912,8 +923,10 @@ function openDrill(type){
             <span style="${r.isOther?"color:var(--mu);":""}">${r.code}${r.name?` <span style="color:var(--mu);font-weight:400;font-size:10px;">${r.name}</span>`:""}</span>
             ${sub?`<span style="font-size:10px;color:var(--mu);">${sub}</span>`:""}
           </div>
-          ${tgt?`<div style="font-size:11px;font-weight:700;color:${pctCol};margin-right:8px;white-space:nowrap;">${pct.toFixed(1)}%</div>`:""}
-          <div class="modal-val" style="color:${isMargin?"var(--gr)":"var(--or)"};">${GBP(val)}</div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;">
+            <div class="modal-val" style="color:${valCol};">${GBP(val)}</div>
+            ${tgt?`<div style="font-size:10px;color:var(--mu);white-space:nowrap;">of ${GBP(tgt)} &bull; <span style="color:${pctCol};font-weight:700;">${pct.toFixed(1)}%</span></div>`:""}
+          </div>
         </div>`;
       }).join("");
     }
@@ -1028,6 +1041,7 @@ function render(d){
   document.getElementById("mShipped").textContent=GBPd(d.shippedToday);
   document.getElementById("mShippedTgt").textContent=d.shippedTarget?"Target: "+GBPd(d.shippedTarget):"";
   document.getElementById("mNewCust").textContent=INT(d.newCustomers);
+  document.getElementById("mNewCustTgt").innerHTML=fmtTgtLine(d.newCustomers,d.newCustomersTarget);
   document.getElementById("mCalls").textContent=INT(d.msiCalls);
   document.getElementById("mCallsTgt").innerHTML=fmtTgtLine(d.msiCalls,d.callsTarget);
   document.getElementById("mVisits").textContent=INT(d.siteVisits);
