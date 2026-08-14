@@ -166,6 +166,13 @@
 <script>
 const NAV_WORKER_URL = "https://nav-data.darren-clayson.workers.dev";
 
+// This page has no login — Browser Run must be able to load it. The token
+// arrives in the URL (?k=...) and is forwarded to the Worker, which validates
+// it server-side before returning anything. Without it the page renders empty,
+// so the URL alone exposes nothing.
+const SNAPSHOT_KEY = new URLSearchParams(location.search).get("k") || "";
+const keyed = url => url + (url.includes("?") ? "&" : "?") + "k=" + encodeURIComponent(SNAPSHOT_KEY);
+
 // ── DATA DUMP ─────────────────────────────────────────────────────────────────
 // Identical cell-mapping to the interactive dashboard's readDataDump(). Only
 // the source of the workbook bytes differs (app-only proxy vs a signed-in
@@ -173,7 +180,7 @@ const NAV_WORKER_URL = "https://nav-data.darren-clayson.workers.dev";
 // if the sheet layout changes, update both.
 async function readDataDump(){
   try{
-    const dl=await fetch(NAV_WORKER_URL+"/data/datadump",{signal:AbortSignal.timeout(20000)});
+    const dl=await fetch(keyed(NAV_WORKER_URL+"/data/datadump"),{signal:AbortSignal.timeout(20000)});
     if(!dl.ok)throw new Error("Data Dump proxy "+dl.status);
     const ab=await dl.arrayBuffer();
     const wb=XLSX.read(ab,{type:"array"});
