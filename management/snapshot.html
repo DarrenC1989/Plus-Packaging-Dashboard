@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280, initial-scale=1.0">
+<title>Management Dashboard — Snapshot</title>
+<style>
+  :root{
+    --nb:#0d1b38;--or:#f47c20;--gr:#34d399;--cy:#38bdf8;
+    --re:#f87171;--am:#fbbf24;--pu:#a78bfa;--mu:rgba(255,255,255,.45);
+    --ow:rgba(255,255,255,.88);--card:#13213f;--border:rgba(255,255,255,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--nb);color:var(--ow);font-family:"Segoe UI",system-ui,sans-serif}
+  body{width:1280px;padding:24px 28px}
+  .hdr{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+  .hdr img{height:32px}
+  .hdr .title{font-size:16px;font-weight:700}
+  .hdr .asof{margin-left:auto;font-size:12px;color:var(--mu)}
+  .slbl{display:flex;align-items:center;gap:10px;margin:16px 0 8px}
+  .slbl span{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;font-family:"Courier New",monospace;color:var(--mu);white-space:nowrap}
+  .slbll{flex:1;height:1px;background:var(--border)}
+
+  .hero-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .hero-card{border-radius:14px;padding:16px 20px;border:1px solid transparent}
+  .hero-card.red{background:linear-gradient(135deg,#2a0f0f,#3d1515);border-color:rgba(248,113,113,.25)}
+  .hero-card.green{background:linear-gradient(135deg,#0a2a1a,#0f3d25);border-color:rgba(52,211,153,.25)}
+  .hero-card.neutral{background:linear-gradient(135deg,#131f3a,#1a2a4a);border-color:var(--border)}
+  .hero-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;font-family:"Courier New",monospace;color:var(--mu);margin-bottom:4px}
+  .hero-val{font-size:32px;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--or)}
+  .hero-card.green .hero-val{color:var(--gr)}
+  .hero-card.red .hero-val{color:var(--re)}
+  .hero-tgt{font-size:11px;color:var(--mu);margin-top:3px}
+  .hero-pct-row{display:flex;align-items:center;gap:8px;margin-top:6px}
+  .hero-pct{font-size:18px;font-weight:800;color:var(--re)}
+  .hero-card.green .hero-pct{color:var(--gr)}
+  .hero-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(248,113,113,.15);color:var(--re);border:1px solid rgba(248,113,113,.3)}
+  .hero-card.green .hero-badge{background:rgba(52,211,153,.15);color:var(--gr);border-color:rgba(52,211,153,.3)}
+
+  .grid{display:grid;gap:10px}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .g5{grid-template-columns:repeat(5,1fr)}
+  .mcard{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 15px}
+  .mcard-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.6px;font-family:"Courier New",monospace;color:var(--mu);margin-bottom:2px}
+  .mcard-sub{font-size:10px;color:var(--mu);margin-bottom:5px}
+  .mcard-val{font-size:24px;font-weight:800;letter-spacing:-.5px;line-height:1}
+  .mcard-detail{font-size:10px;color:var(--mu);margin-top:4px}
+  .mcard-blocked{font-size:10px;color:var(--am);margin-top:4px;font-style:italic}
+
+  .c-or{border-color:rgba(244,124,32,.25);background:linear-gradient(135deg,#1f1208,#2a1a0a)}
+  .c-gr{border-color:rgba(52,211,153,.25);background:linear-gradient(135deg,#0a1f14,#0d2a1c)}
+  .c-cy{border-color:rgba(56,189,248,.25);background:linear-gradient(135deg,#081828,#0d2235)}
+  .c-pu{border-color:rgba(167,139,250,.25);background:linear-gradient(135deg,#140d28,#1c1238)}
+  .c-am{border-color:rgba(251,191,36,.25);background:linear-gradient(135deg,#1c1506,#261d08)}
+
+  .footer-note{margin-top:16px;font-size:10px;color:var(--mu)}
+</style>
+</head>
+<body>
+
+  <div class="hdr">
+    <img src="/favicon.png">
+    <div class="title">Plus Packaging — Management Dashboard</div>
+    <div class="asof" id="asOf">Loading…</div>
+  </div>
+
+  <div class="slbl"><span>MTD Performance</span><div class="slbll"></div></div>
+  <div class="hero-row">
+    <div class="hero-card neutral" id="hcSales">
+      <div class="hero-label">Sales MTD</div>
+      <div class="hero-val" id="hSalesVal">—</div>
+      <div class="hero-tgt">Target: <span id="hSalesTgt">—</span></div>
+      <div class="hero-pct-row"><div class="hero-pct" id="hSalesPct">—</div><div class="hero-badge" id="hSalesBadge">—</div></div>
+    </div>
+    <div class="hero-card neutral" id="hcPM">
+      <div class="hero-label">Product Margin MTD</div>
+      <div class="hero-val" id="hPMVal">—</div>
+      <div class="hero-tgt">Target: <span id="hPMTgt">—</span></div>
+      <div class="hero-pct-row"><div class="hero-pct" id="hPMPct">—</div><div class="hero-badge" id="hPMBadge">—</div></div>
+    </div>
+  </div>
+
+  <div class="slbl"><span>Today</span><div class="slbll"></div></div>
+  <div class="grid g4">
+    <div class="mcard c-or">
+      <div class="mcard-label">PM %</div>
+      <div class="mcard-sub">Margin ÷ Sales MTD</div>
+      <div class="mcard-val" id="mPMPct" style="color:var(--or);">—</div>
+    </div>
+    <div class="mcard c-cy">
+      <div class="mcard-label">Orders Today</div>
+      <div class="mcard-sub">Sales orders in</div>
+      <div class="mcard-val" id="mOrders" style="color:var(--cy);">—</div>
+      <div class="mcard-detail" id="mOrdersTgt"></div>
+    </div>
+    <div class="mcard c-gr">
+      <div class="mcard-label">Shipped Today</div>
+      <div class="mcard-sub">Value shipped</div>
+      <div class="mcard-val" id="mShipped" style="color:var(--gr);">—</div>
+      <div class="mcard-detail" id="mShippedTgt"></div>
+    </div>
+    <div class="mcard c-am">
+      <div class="mcard-label">New Customers</div>
+      <div class="mcard-sub">This month</div>
+      <div class="mcard-val" id="mNewCust" style="color:var(--am);">—</div>
+      <div class="mcard-detail" id="mNewCustTgt"></div>
+    </div>
+  </div>
+
+  <div class="slbl"><span>CRM Activity — This Month</span><div class="slbll"></div></div>
+  <div class="grid g4">
+    <div class="mcard c-cy">
+      <div class="mcard-label">MSI Calls</div>
+      <div class="mcard-val" id="mCalls" style="color:var(--cy);">—</div>
+      <div class="mcard-blocked" id="mCallsNote"></div>
+    </div>
+    <div class="mcard c-pu">
+      <div class="mcard-label">Site Visits</div>
+      <div class="mcard-val" id="mVisits" style="color:var(--pu);">—</div>
+      <div class="mcard-blocked" id="mVisitsNote"></div>
+    </div>
+    <div class="mcard c-or">
+      <div class="mcard-label">Deals Opened</div>
+      <div class="mcard-val" id="mDeals" style="color:var(--or);">—</div>
+      <div class="mcard-blocked" id="mDealsNote"></div>
+    </div>
+    <div class="mcard c-gr">
+      <div class="mcard-label">Win Rate</div>
+      <div class="mcard-val" id="mWinRate" style="color:var(--gr);">—</div>
+      <div class="mcard-blocked" id="mWinRateNote"></div>
+    </div>
+  </div>
+
+  <div class="slbl"><span>Operations &amp; Experience</span><div class="slbll"></div></div>
+  <div class="grid g5">
+    <div class="mcard c-am">
+      <div class="mcard-label">NPS Score</div>
+      <div class="mcard-sub">Last 30 days</div>
+      <div class="mcard-val" id="mNPS" style="color:var(--am);">—</div>
+    </div>
+    <div class="mcard c-gr">
+      <div class="mcard-label">Catalogue In Stock</div>
+      <div class="mcard-sub">% available</div>
+      <div class="mcard-val" id="mCatPct" style="color:var(--gr);">—</div>
+    </div>
+    <div class="mcard c-cy">
+      <div class="mcard-label">Catalogue Items</div>
+      <div class="mcard-sub">In stock / total</div>
+      <div class="mcard-val" id="mCatCount" style="color:var(--cy);">—</div>
+    </div>
+    <div class="mcard c-pu">
+      <div class="mcard-label">Inventory Value</div>
+      <div class="mcard-sub">Finance tab D3</div>
+      <div class="mcard-val" id="mInvVal" style="color:var(--pu);">—</div>
+    </div>
+    <div class="mcard" style="border-color:rgba(255,255,255,.08);background:var(--card);">
+      <div class="mcard-label">Working Days</div>
+      <div class="mcard-sub">Gone this month</div>
+      <div class="mcard-val" id="mWorkDays" style="color:var(--ow);">—</div>
+    </div>
+  </div>
+
+  <div class="footer-note" id="footerNote"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const NAV_WORKER_URL = "https://nav-data.darren-clayson.workers.dev";
+
+// ── DATA DUMP ─────────────────────────────────────────────────────────────────
+// Identical cell-mapping to the interactive dashboard's readDataDump(). Only
+// the source of the workbook bytes differs (app-only proxy vs a signed-in
+// user's Graph token) — do not let this drift from management-index.html;
+// if the sheet layout changes, update both.
+async function readDataDump(){
+  try{
+    const dl=await fetch(NAV_WORKER_URL+"/data/datadump",{signal:AbortSignal.timeout(20000)});
+    if(!dl.ok)throw new Error("Data Dump proxy "+dl.status);
+    const ab=await dl.arrayBuffer();
+    const wb=XLSX.read(ab,{type:"array"});
+    const ws=wb.Sheets["SALES"]||wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+    const salesYesterday=rows[73]?.[2]!=null?Math.abs(Number(rows[73][2])):null;
+    const pmYesterday=rows[77]?.[2]!=null?Math.abs(Number(rows[77][2])):null;
+    const salesTarget=rows[21]?.[2]!=null?Math.abs(Number(rows[21][2])):null;
+    const pmTarget=rows[22]?.[2]!=null?Math.abs(Number(rows[22][2])):null;
+    const ordersTarget=rows[23]?.[2]!=null?Math.abs(Number(rows[23][2])):null;
+    const shippedTarget=rows[20]?.[2]!=null?Math.abs(Number(rows[20][2])):null;
+    const newCustomers=rows[63]?.[2]!=null?Number(rows[63][2]):null;
+    let catPct=null,catCount=null,catTotal=null;
+    const ops=wb.Sheets["OPS"];
+    if(ops){
+      const or=XLSX.utils.sheet_to_json(ops,{header:1,defval:null});
+      const rawPct=or[10]?.[2];if(rawPct!=null){const n=Number(rawPct);catPct=isNaN(n)?null:(n<=1?n*100:n);}
+      catCount=or[8]?.[2]!=null?Number(or[8][2]):null;
+      catTotal=or[9]?.[2]!=null?Number(or[9][2]):null;
+    }
+    let inventoryValue=null;
+    const fin=wb.Sheets["Finance"]||wb.Sheets["FINANCE"]||wb.Sheets["finance"];
+    if(fin){const fr=XLSX.utils.sheet_to_json(fin,{header:1,defval:null});inventoryValue=fr[2]?.[3]!=null?Number(fr[2][3]):null;}
+
+    let wdGone=null,wdTotal=null;
+    const dates=wb.Sheets["Dates"]||wb.Sheets["DATES"];
+    if(dates){
+      const dr=XLSX.utils.sheet_to_json(dates,{header:1,defval:null});
+      for(const row of dr){
+        const lab=row?.[3];
+        if(typeof lab!=="string")continue;
+        const v=row[4];
+        if(/working days gone/i.test(lab)&&v!=null&&!isNaN(Number(v)))wdGone=Number(v);
+        if(/total working days/i.test(lab)&&v!=null&&!isNaN(Number(v)))wdTotal=Number(v);
+      }
+    }
+    const wdFrac=(wdTotal&&wdGone!=null)?(wdGone/wdTotal):1;
+
+    let newCustomersTarget=null;
+    const tgt=wb.Sheets["TARGETS"]||wb.Sheets["Targets"];
+    if(tgt){
+      const tr=XLSX.utils.sheet_to_json(tgt,{header:1,defval:null});
+      let hdrRow=-1;
+      for(let r=0;r<tr.length;r++){
+        if((tr[r]||[]).some(v=>typeof v==="string"&&/sales target/i.test(v))){hdrRow=r;break;}
+      }
+      if(hdrRow>=0){
+        const hdr=tr[hdrRow]||[];
+        const now=new Date(),y=now.getFullYear(),mo=now.getMonth();
+        const toDate=v=>{
+          if(v instanceof Date)return v;
+          if(typeof v==="number"&&v>10000)return new Date(Date.UTC(1899,11,30)+v*86400000);
+          const p=Date.parse(v);return isNaN(p)?null:new Date(p);
+        };
+        let monthRow=null;
+        for(let r=hdrRow+1;r<tr.length;r++){
+          const d=toDate(tr[r]?.[1]);
+          if(d&&d.getFullYear()===y&&d.getMonth()===mo){monthRow=tr[r];break;}
+        }
+        if(monthRow){
+          for(let c=0;c<hdr.length;c++){
+            const h=hdr[c];
+            if(typeof h!=="string")continue;
+            if(/^new customers$/i.test(h.trim())){
+              const val=monthRow[c];
+              if(val!=null&&val!==""&&!isNaN(Number(val)))newCustomersTarget=Number(val)*wdFrac;
+            }
+          }
+        }
+      }
+    }
+
+    return{salesYesterday,pmYesterday,salesTarget,pmTarget,ordersTarget,shippedTarget,
+           newCustomers,newCustomersTarget,catPct,catCount,catTotal,inventoryValue,wdGone,wdTotal};
+  }catch(e){console.warn("DataDump:",e.message);return{ddError:e.message};}
+}
+
+// ── NAV ───────────────────────────────────────────────────────────────────────
+async function readNAV(dd){
+  try{
+    const r=await fetch(NAV_WORKER_URL+"/nav/all",{signal:AbortSignal.timeout(30000)});
+    if(!r.ok)throw new Error("NAV "+r.status);
+    const j=await r.json();
+    return{
+      sales:(dd.salesYesterday??0)+(j.salesToday??0),
+      pm:(dd.pmYesterday??0)+(j.marginToday??0),
+      ordersToday:j.ordersToday??null,
+      shippedToday:j.shippedToday??null,
+    };
+  }catch(e){console.warn("NAV:",e.message);return{navError:e.message};}
+}
+
+// ── NPS ───────────────────────────────────────────────────────────────────────
+async function readNPS(){
+  try{
+    const r=await fetch("../nps.json?t="+Date.now(),{signal:AbortSignal.timeout(5000)});
+    if(!r.ok)throw new Error("nps "+r.status);
+    const j=await r.json();
+    return{nps:j.NPS??j.score??j.nps??null};
+  }catch(e){return{nps:null};}
+}
+
+// ── CRM — BLOCKED until Dynamics Application User is set up ───────────────────
+// The interactive dashboard reads CRM via a signed-in user's delegated token.
+// This page has no user, so it cannot currently reach Dynamics at all. Once an
+// Application User exists in Dynamics (Settings → Security → Users →
+// Application User, linked to this app registration), replace this stub with
+// a call to a new app-only CRM endpoint on the Worker, the same pattern as
+// readDataDump() above.
+function readCRM(){
+  return{msiCalls:null,siteVisits:null,dealsOpened:null,winRate:null,crmBlocked:true};
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+const GBP=v=>v==null?"—":"£"+Number(v).toLocaleString("en-GB",{minimumFractionDigits:0,maximumFractionDigits:0});
+const GBPd=v=>v==null?"—":"£"+Number(v).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2});
+const PCT=v=>v==null?"—":Number(v).toFixed(1)+"%";
+const INT=v=>v==null?"—":Math.round(Number(v)).toLocaleString("en-GB");
+
+function fmtTgtLine(actual,target){
+  if(target==null)return"";
+  const t=Math.round(target);
+  if(actual==null)return`Target: ${INT(t)}`;
+  const pct=t?Math.round(actual/t*1000)/10:null;
+  const col=pct==null?"var(--mu)":pct>=100?"var(--gr)":"var(--am)";
+  return`Target: ${INT(t)}${pct!=null?` &bull; <span style="color:${col};font-weight:700;">${pct.toFixed(1)}%</span>`:""}`;
+}
+
+function renderHero(cardId,valId,tgtId,pctId,badgeId,value,target){
+  const card=document.getElementById(cardId);
+  const pct=value&&target?Math.round((value/target)*1000)/10:null;
+  const onTarget=pct!=null&&pct>=100;
+  card.className="hero-card "+(pct==null?"neutral":onTarget?"green":"red");
+  document.getElementById(valId).textContent=GBPd(value);
+  document.getElementById(tgtId).textContent=GBPd(target);
+  document.getElementById(pctId).textContent=pct!=null?pct.toFixed(1)+"%":"—";
+  document.getElementById(badgeId).textContent=pct==null?"—":pct>100?"Above Target ✓":pct>=100?"On Target ✓":"Below Target";
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function render(d){
+  renderHero("hcSales","hSalesVal","hSalesTgt","hSalesPct","hSalesBadge",d.sales,d.salesTarget);
+  renderHero("hcPM","hPMVal","hPMTgt","hPMPct","hPMBadge",d.pm,d.pmTarget);
+
+  const pmPct=d.sales&&d.pm?Math.round(d.pm/d.sales*1000)/10:null;
+  document.getElementById("mPMPct").textContent=pmPct!=null?pmPct.toFixed(1)+"%":"—";
+  document.getElementById("mOrders").textContent=GBPd(d.ordersToday);
+  document.getElementById("mOrdersTgt").textContent=d.ordersTarget?"Target: "+GBPd(d.ordersTarget):"";
+  document.getElementById("mShipped").textContent=GBPd(d.shippedToday);
+  document.getElementById("mShippedTgt").textContent=d.shippedTarget?"Target: "+GBPd(d.shippedTarget):"";
+  document.getElementById("mNewCust").textContent=INT(d.newCustomers);
+  document.getElementById("mNewCustTgt").innerHTML=fmtTgtLine(d.newCustomers,d.newCustomersTarget);
+
+  // CRM — explicitly labelled rather than shown as a silent dash, so nobody
+  // reads "—" as "zero activity" when it actually means "not connected yet".
+  ["mCalls","mVisits","mDeals","mWinRate"].forEach(id=>document.getElementById(id).textContent="—");
+  const blockedMsg="CRM connection pending setup";
+  document.getElementById("mCallsNote").textContent=blockedMsg;
+  document.getElementById("mVisitsNote").textContent=blockedMsg;
+  document.getElementById("mDealsNote").textContent=blockedMsg;
+  document.getElementById("mWinRateNote").textContent=blockedMsg;
+
+  document.getElementById("mNPS").textContent=d.nps!=null?Number(d.nps).toFixed(1):"—";
+  document.getElementById("mCatPct").textContent=PCT(d.catPct);
+  document.getElementById("mCatCount").innerHTML=d.catCount!=null
+    ?`<span style="color:var(--cy);">${INT(d.catCount)}</span><span style="color:var(--mu);font-size:.6em;font-weight:600;"> / ${d.catTotal?INT(d.catTotal):"—"}</span>`
+    :"—";
+  document.getElementById("mInvVal").textContent=GBP(d.inventoryValue);
+  document.getElementById("mWorkDays").textContent=(d.wdGone!=null&&d.wdTotal!=null)?`${d.wdGone} of ${d.wdTotal}`:"—";
+
+  const errs=[d.ddError&&"Data Dump: "+d.ddError,d.navError&&"NAV: "+d.navError].filter(Boolean);
+  document.getElementById("footerNote").textContent=errs.length?"⚠ "+errs.join(" · "):"";
+}
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+(async()=>{
+  const now=new Date();
+  document.getElementById("asOf").textContent="As of "+now.toLocaleString("en-GB",{
+    weekday:"long",day:"numeric",month:"long",hour:"2-digit",minute:"2-digit",timeZone:"Europe/London"
+  })+" UK time";
+
+  const[dd,nps]=await Promise.all([readDataDump(),readNPS()]);
+  const nav=await readNAV(dd);
+  const crm=readCRM();
+  render({...dd,...nps,...nav,...crm});
+
+  // Signal to the screenshot Worker that data has painted and it's safe to
+  // capture. Placed last, after every DOM write above, on purpose — if this
+  // fires before render() finishes, the email goes out with a half-drawn page.
+  const marker=document.createElement("div");
+  marker.id="snapshot-ready";
+  marker.style.display="none";
+  document.body.appendChild(marker);
+})();
+</script>
+</body>
+</html>
