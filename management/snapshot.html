@@ -164,7 +164,13 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-const NAV_WORKER_URL = "https://nav-data.darren-clayson.workers.dev";
+// Same-origin proxy rather than the Worker directly. Calling the Worker
+// cross-origin from behind Cloudflare Access fails: the browser's CORS
+// preflight goes out without the Access service token headers, Access rejects
+// it, and every fetch dies as "Failed to fetch". Same-origin issues no
+// preflight, so the problem disappears rather than being worked around.
+// Proxied by functions/api/[[path]].js to nav-data.darren-clayson.workers.dev
+const NAV_WORKER_URL = "/api";
 
 // This page has no login — Browser Run must be able to load it. The token
 // arrives in the URL (?k=...) and is forwarded to the Worker, which validates
