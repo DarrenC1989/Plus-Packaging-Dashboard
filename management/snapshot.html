@@ -225,6 +225,53 @@ async function readDataDump(){
     }
     const wdFrac=(wdTotal&&wdGone!=null)?(wdGone/wdTotal):1;
 
+    // ── CRM activity targets (CRM Targets sheet) ─────────────────────────────
+    // Two-row header: row 2 = category ("MSI Phone Call Target" /
+    // "MSI Site Visit Target" / "Deals Opened Target"), row 3 = person name for
+    // that column. Column B holds the month as a NAME ("August"), not a date —
+    // different from the TARGETS sheet — so matched on month name, not Date().
+    // Pro-rated by the same working-days fraction as the sales/margin targets,
+    // for the same reason: these are full-month figures and we want "target
+    // to date" to compare fairly against a part-built month.
+    const crmTargets={calls:{overall:0,byPerson:{}},visits:{overall:0,byPerson:{}},dealsOpen:{overall:0,byPerson:{}}};
+    const crmTgtSheet=wb.Sheets["CRM Targets"];
+    if(crmTgtSheet){
+      const cr=XLSX.utils.sheet_to_json(crmTgtSheet,{header:1,defval:null});
+      let hdrRow=-1;
+      for(let r=0;r<cr.length;r++){
+        if((cr[r]||[]).some(v=>typeof v==="string"&&/target/i.test(v))){hdrRow=r;break;}
+      }
+      if(hdrRow>=0){
+        const catRow=cr[hdrRow]||[];
+        const nameRow=cr[hdrRow+1]||[];
+        const monthName=new Date().toLocaleString("en-US",{month:"long"}).toLowerCase();
+        let monthRow=null;
+        for(let r=hdrRow+2;r<cr.length;r++){
+          const b=cr[r]?.[1];
+          if(typeof b==="string"&&b.trim().toLowerCase()===monthName){monthRow=cr[r];break;}
+        }
+        if(monthRow){
+          const catKey=cat=>{
+            if(!cat)return null;
+            if(/phone call/i.test(cat))return"calls";
+            if(/site visit/i.test(cat))return"visits";
+            if(/deals opened/i.test(cat))return"dealsOpen";
+            return null;
+          };
+          for(let c=2;c<catRow.length;c++){
+            const key=catKey(catRow[c]);
+            if(!key)continue;
+            const person=(nameRow[c]||"").toString().trim();
+            const val=monthRow[c];
+            if(!person||val==null||val===""||isNaN(Number(val)))continue;
+            const prorated=Number(val)*wdFrac;
+            crmTargets[key].byPerson[person]=(crmTargets[key].byPerson[person]||0)+prorated;
+            crmTargets[key].overall+=prorated;
+          }
+        }
+      }
+    }
+
     let newCustomersTarget=null;
     const tgt=wb.Sheets["TARGETS"]||wb.Sheets["Targets"];
     if(tgt){
@@ -260,7 +307,7 @@ async function readDataDump(){
     }
 
     return{salesYesterday,pmYesterday,salesTarget,pmTarget,ordersTarget,shippedTarget,
-           newCustomers,newCustomersTarget,catPct,catCount,catTotal,inventoryValue,wdGone,wdTotal};
+           newCustomers,newCustomersTarget,catPct,catCount,catTotal,inventoryValue,wdGone,wdTotal,crmTargets};
   }catch(e){console.warn("DataDump:",e.message);return{ddError:e.message};}
 }
 
@@ -312,6 +359,17 @@ const GBPd=v=>v==null?"—":"£"+Number(v).toLocaleString("en-GB",{minimumFracti
 const PCT=v=>v==null?"—":Number(v).toFixed(1)+"%";
 const INT=v=>v==null?"—":Math.round(Number(v)).toLocaleString("en-GB");
 
+// Target-to-date line, e.g. "Target: 704 · 87%". Matches the interactive
+// dashboard exactly so the two never disagree.
+function fmtTgtLine(actual,target){
+  if(target==null)return"";
+  const t=Math.round(target);
+  if(actual==null)return`Target: ${INT(t)}`;
+  const pct=t?Math.round(actual/t*1000)/10:null;
+  const col=pct==null?"var(--mu)":pct>=100?"var(--gr)":"var(--am)";
+  return`Target: ${INT(t)}${pct!=null?` &bull; <span style="color:${col};font-weight:700;">${pct.toFixed(1)}%</span>`:""}`;
+}
+
 function fmtTgtLine(actual,target){
   if(target==null)return"";
   const t=Math.round(target);
@@ -353,9 +411,26 @@ function render(d){
   document.getElementById("mVisits").textContent=INT(d.siteVisits);
   document.getElementById("mDeals").textContent=INT(d.dealsOpened);
   document.getElementById("mWinRate").textContent=d.winRate!=null?d.winRate+"%":"—";
-  const crmNote=d.crmError?"CRM unavailable":"";
-  ["mCallsNote","mVisitsNote","mDealsNote","mWinRateNote"]
-    .forEach(id=>document.getElementById(id).textContent=crmNote);
+
+  // Targets come from the Data Dump (CRM Targets sheet), the counts from CRM.
+  // If CRM failed, show the error instead of a target — a target line next to
+  // a blank figure reads as "nothing achieved" rather than "nothing fetched".
+  if(d.crmError){
+    ["mCallsNote","mVisitsNote","mDealsNote","mWinRateNote"]
+      .forEach(id=>{const el=document.getElementById(id);el.textContent="CRM unavailable";el.style.color="var(--am)";});
+  }else{
+    const setTgt=(id,actual,target)=>{
+      const el=document.getElementById(id);
+      el.innerHTML=fmtTgtLine(actual,target);
+      el.style.color="var(--mu)";
+      el.style.fontStyle="normal";
+    };
+    setTgt("mCallsNote", d.msiCalls,    d.crmTargets?.calls?.overall);
+    setTgt("mVisitsNote",d.siteVisits,  d.crmTargets?.visits?.overall);
+    setTgt("mDealsNote",  d.dealsOpened, d.crmTargets?.dealsOpen?.overall);
+    // Win rate has no target in the sheet — leave it blank rather than invent one
+    document.getElementById("mWinRateNote").textContent="";
+  }
 
   document.getElementById("mNPS").textContent=d.nps!=null?Number(d.nps).toFixed(1):"—";
   document.getElementById("mCatPct").textContent=PCT(d.catPct);
