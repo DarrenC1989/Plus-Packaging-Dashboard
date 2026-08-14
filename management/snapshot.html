@@ -283,15 +283,21 @@ async function readNPS(){
   }catch(e){return{nps:null};}
 }
 
-// ── CRM — BLOCKED until Dynamics Application User is set up ───────────────────
-// The interactive dashboard reads CRM via a signed-in user's delegated token.
-// This page has no user, so it cannot currently reach Dynamics at all. Once an
-// Application User exists in Dynamics (Settings → Security → Users →
-// Application User, linked to this app registration), replace this stub with
-// a call to a new app-only CRM endpoint on the Worker, the same pattern as
-// readDataDump() above.
-function readCRM(){
-  return{msiCalls:null,siteVisits:null,dealsOpened:null,winRate:null,crmBlocked:true};
+// ── CRM (app-only, via the Worker) ────────────────────────────────────────────
+// The interactive dashboard reads CRM with the signed-in user's delegated
+// token. This page has no user, so the Worker reads it instead using an
+// Application User in Dynamics. Same queries either side, so the two views
+// can't quietly disagree.
+async function readCRM(){
+  try{
+    const r=await fetch(keyed(NAV_WORKER_URL+"/crm/summary"),{signal:AbortSignal.timeout(30000)});
+    const j=await r.json();
+    if(!r.ok||j.crmError)throw new Error(j.crmError||("CRM "+r.status));
+    return j;
+  }catch(e){
+    console.warn("CRM:",e.message);
+    return{crmError:e.message};
+  }
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -334,14 +340,16 @@ function render(d){
   document.getElementById("mNewCust").textContent=INT(d.newCustomers);
   document.getElementById("mNewCustTgt").innerHTML=fmtTgtLine(d.newCustomers,d.newCustomersTarget);
 
-  // CRM — explicitly labelled rather than shown as a silent dash, so nobody
-  // reads "—" as "zero activity" when it actually means "not connected yet".
-  ["mCalls","mVisits","mDeals","mWinRate"].forEach(id=>document.getElementById(id).textContent="—");
-  const blockedMsg="CRM connection pending setup";
-  document.getElementById("mCallsNote").textContent=blockedMsg;
-  document.getElementById("mVisitsNote").textContent=blockedMsg;
-  document.getElementById("mDealsNote").textContent=blockedMsg;
-  document.getElementById("mWinRateNote").textContent=blockedMsg;
+  // CRM. On failure the cards say so explicitly rather than showing a bare
+  // dash — "—" reads as "zero activity", which is a very different message
+  // from "we couldn't reach Dynamics".
+  document.getElementById("mCalls").textContent=INT(d.msiCalls);
+  document.getElementById("mVisits").textContent=INT(d.siteVisits);
+  document.getElementById("mDeals").textContent=INT(d.dealsOpened);
+  document.getElementById("mWinRate").textContent=d.winRate!=null?d.winRate+"%":"—";
+  const crmNote=d.crmError?"CRM unavailable":"";
+  ["mCallsNote","mVisitsNote","mDealsNote","mWinRateNote"]
+    .forEach(id=>document.getElementById(id).textContent=crmNote);
 
   document.getElementById("mNPS").textContent=d.nps!=null?Number(d.nps).toFixed(1):"—";
   document.getElementById("mCatPct").textContent=PCT(d.catPct);
@@ -351,7 +359,7 @@ function render(d){
   document.getElementById("mInvVal").textContent=GBP(d.inventoryValue);
   document.getElementById("mWorkDays").textContent=(d.wdGone!=null&&d.wdTotal!=null)?`${d.wdGone} of ${d.wdTotal}`:"—";
 
-  const errs=[d.ddError&&"Data Dump: "+d.ddError,d.navError&&"NAV: "+d.navError].filter(Boolean);
+  const errs=[d.ddError&&"Data Dump: "+d.ddError,d.navError&&"NAV: "+d.navError,d.crmError&&"CRM: "+d.crmError].filter(Boolean);
   document.getElementById("footerNote").textContent=errs.length?"⚠ "+errs.join(" · "):"";
 }
 
@@ -362,9 +370,8 @@ function render(d){
     weekday:"long",day:"numeric",month:"long",hour:"2-digit",minute:"2-digit",timeZone:"Europe/London"
   })+" UK time";
 
-  const[dd,nps]=await Promise.all([readDataDump(),readNPS()]);
+  const[dd,nps,crm]=await Promise.all([readDataDump(),readNPS(),readCRM()]);
   const nav=await readNAV(dd);
-  const crm=readCRM();
   render({...dd,...nps,...nav,...crm});
 
   // Signal to the screenshot Worker that data has painted and it's safe to
