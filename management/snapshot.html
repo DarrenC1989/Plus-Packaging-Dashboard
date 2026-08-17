@@ -81,7 +81,7 @@
   </div>
 
   <div class="slbl"><span>Today</span><div class="slbll"></div></div>
-  <div class="grid g4">
+  <div class="grid g5">
     <div class="mcard c-or">
       <div class="mcard-label">PM %</div>
       <div class="mcard-sub">Margin ÷ Sales MTD</div>
@@ -104,6 +104,11 @@
       <div class="mcard-sub">This month</div>
       <div class="mcard-val" id="mNewCust" style="color:var(--am);">—</div>
       <div class="mcard-detail" id="mNewCustTgt"></div>
+    </div>
+    <div class="mcard c-cy">
+      <div class="mcard-label">Orders Booked</div>
+      <div class="mcard-sub">This month</div>
+      <div class="mcard-val" id="mOrdersBooked" style="color:var(--cy);">—</div>
     </div>
   </div>
 
@@ -199,6 +204,8 @@ async function readDataDump(){
     const ordersTarget=rows[23]?.[2]!=null?Math.abs(Number(rows[23][2])):null;
     const shippedTarget=rows[20]?.[2]!=null?Math.abs(Number(rows[20][2])):null;
     const newCustomers=rows[63]?.[2]!=null?Number(rows[63][2]):null;
+    // C69 = "Orders Booked for Month" (row index 68)
+    const ordersBooked=rows[68]?.[2]!=null?Number(rows[68][2]):null;
     let catPct=null,catCount=null,catTotal=null;
     const ops=wb.Sheets["OPS"];
     if(ops){
@@ -307,7 +314,7 @@ async function readDataDump(){
     }
 
     return{salesYesterday,pmYesterday,salesTarget,pmTarget,ordersTarget,shippedTarget,
-           newCustomers,newCustomersTarget,catPct,catCount,catTotal,inventoryValue,wdGone,wdTotal,crmTargets};
+           newCustomers,newCustomersTarget,ordersBooked,catPct,catCount,catTotal,inventoryValue,wdGone,wdTotal,crmTargets};
   }catch(e){console.warn("DataDump:",e.message);return{ddError:e.message};}
 }
 
@@ -402,6 +409,7 @@ function render(d){
   document.getElementById("mShipped").textContent=GBPd(d.shippedToday);
   document.getElementById("mShippedTgt").textContent=d.shippedTarget?"Target: "+GBPd(d.shippedTarget):"";
   document.getElementById("mNewCust").textContent=INT(d.newCustomers);
+  document.getElementById("mOrdersBooked").textContent=INT(d.ordersBooked);
   document.getElementById("mNewCustTgt").innerHTML=fmtTgtLine(d.newCustomers,d.newCustomersTarget);
 
   // CRM. On failure the cards say so explicitly rather than showing a bare
